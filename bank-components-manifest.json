@@ -1,0 +1,20 @@
+{
+  "sharedDependencies": {
+    "react": {
+      "version": "18.2.0",
+      "url_bank_cdn": "https://cdn.bank.com/libs/react/18.2.0/react.production.min.js",
+      "integrity_sri": "sha384-abcdef...", // Subresource Integrity hash
+      "globalVarName": "React" // How it's exposed globally
+    },
+    "react-dom": {
+      "version": "18.2.0",
+      "url_bank_cdn": "https://cdn.bank.com/libs/react-dom/18.2.0/react-dom.production.min.js",
+      "integrity_sri": "sha384-ghijkl...",
+      "globalVarName": "ReactDOM"
+    }
+    // ... other shared libraries
+  },
+  "components": {
+    // ... component definitions
+  }
+}
