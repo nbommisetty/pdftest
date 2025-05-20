@@ -71,7 +71,8 @@ alt Low Risk (nextStep == "VerifyPassword")
     deactivate D1Connect
 
     alt Result == Failure ' This is D1Gateway checking the result received from D1Connect
-        note over D1Gateway : If user subscribed to Push Notifications
+        opt If user subscribed to Push Notifications
+            note over D1Gateway : Triggering Push Notification (Login Failed)
             D1Gateway -> D1Connect : Trigger Push Notification (Login Failed: Incorrect Password)
             activate D1Connect
             D1Connect -> Firebase : Send Push (Login Failed: Incorrect Password) ' Async call
@@ -81,7 +82,7 @@ alt Low Risk (nextStep == "VerifyPassword")
             deactivate Firebase 
             D1Connect --> D1Gateway : Push Request Submitted (Ack)
             deactivate D1Connect
-        end note
+        end
         D1Gateway --> Browser : Error Response (Login Unsuccessful)
         Browser --> User : Notify: Login Not Successful
         deactivate D1Gateway
@@ -97,10 +98,11 @@ alt Low Risk (nextStep == "VerifyPassword")
         D1Connect --> D1Gateway : AccessToken, IDToken
         ' D1Connect is now active from token retrieval.
         
-        note over D1Gateway : If user subscribed to Push Notifications
+        opt If user subscribed to Push Notifications
+            note over D1Gateway : Triggering Push Notification (Login Successful)
             D1Gateway -> D1Connect : Trigger Push Notification (Login Successful)
-            ' D1Connect is already active from token retrieval.
-            ' No explicit activate D1Connect here as it's a continuation of its active state.
+            ' D1Connect is already active from token retrieval or reactivated if previously deactivated.
+            activate D1Connect 
             D1Connect -> Firebase : Send Push (Login Successful) ' Async call
             activate Firebase
             Firebase --> User : Push Notification (Login Successful) ' Eventual delivery
@@ -109,7 +111,7 @@ alt Low Risk (nextStep == "VerifyPassword")
             D1Connect --> D1Gateway : Push Request Submitted (Ack)
             ' D1Connect deactivates after handling push.
             deactivate D1Connect 
-        end note
+        end
         
         D1Gateway --> Browser : Login Success (Tokens/Session Cookie)
         ' D1Gateway is active. Comment "D1Gateway remains active to serve dashboard requests" applies.
@@ -130,7 +132,8 @@ alt Low Risk (nextStep == "VerifyPassword")
             deactivate D1Connect
             D1Gateway --> Browser : Account Details ' Browser receives data
             ' Browser processes/displays data
-            deactivate D1Gateway ' Deactivate D1Gateway after this specific widget call.
+            ' Deactivate D1Gateway after this specific widget call.
+            deactivate D1Gateway 
         
         == Fetch_Upcoming_Transactions ==
             Browser -> D1Gateway : [GET] /dashboard/upcoming-transactions
@@ -233,7 +236,8 @@ else High Risk (nextStep == "StepUp")
         ' D1Connect will be reactivated for push if needed
         deactivate D1Connect 
         
-        note over D1Gateway : If user subscribed to Push Notifications
+        opt If user subscribed to Push Notifications
+            note over D1Gateway : Triggering Push Notification (Login Failed: Invalid OTP)
             D1Gateway -> D1Connect : Trigger Push Notification (Login Failed: Invalid OTP)
             activate D1Connect
             D1Connect -> Firebase : Send Push (Login Failed: Invalid OTP) ' Async call
@@ -243,7 +247,7 @@ else High Risk (nextStep == "StepUp")
             deactivate Firebase 
             D1Connect --> D1Gateway : Push Request Submitted (Ack)
             deactivate D1Connect
-        end note
+        end
         
         D1Gateway --> Browser : Error Response (Invalid OTP)
         Browser --> User : Notify: Invalid OTP Entered
@@ -270,14 +274,14 @@ else High Risk (nextStep == "StepUp")
         deactivate RDG
         
         ' D1Gateway initiates password validation as per the "Low Risk" flow, using retrieved password
-        D1Gateway -> D1Connect : [POST] ValidatePassword
+        D1Gateway -> D1Connect : [POST] ValidatePassword (retrieved encrypted password)
         activate D1Connect
-        note over D1Gateway
-            Subsequent steps (D1Connect -> IDP for password, IDP response, token issuance or failure,
-            push notifications, and dashboard loading on success) follow the "Low Risk" path.
-            For brevity, these are not fully repeated here but would be similar to the
-            "Low Risk (nextStep == "VerifyPassword")" section.
-        end note
+        ' Subsequent steps (D1Connect -> IDP for password, IDP response, token issuance or failure,
+        ' push notifications, and dashboard loading on success) follow the "Low Risk" path.
+        ' For brevity, these are not fully repeated here but would be similar to the
+        ' "Low Risk (nextStep == "VerifyPassword")" section.
+        ' Example: D1Connect -> IDP : [POST] /wizard/login/password (retrieved password)
+        ' ... then handling of success/failure as in the low risk path ...
     end
 end
 
