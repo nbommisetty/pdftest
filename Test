@@ -1,0 +1,61 @@
+// NEW: Orchestration method to get fields with merged configurations
+    @Override
+    public List<EffectiveField> getFieldsWithConfigForForm(Long tenantId, Long applicationId, Long formId) {
+        // 1. Validate existence of tenant, application, form
+        // CORRECTED: Use injected repositories for validation
+        tenantRepository.findById(tenantId)
+                .orElseThrow(() -> new ResourceNotFoundException("Tenant not found with ID: " + tenantId));
+        applicationRepository.findById(applicationId)
+                .orElseThrow(() -> new ResourceNotFoundException("Application not found with ID: " + applicationId));
+        formRepository.findById(formId)
+                .orElseThrow(() -> new ResourceNotFoundException("Form not found with ID: " + formId));
+
+        // 2. Fetch all fields for the given form
+        List<Field> fieldsInForm = fieldRepository.findByFormId(formId);
+
+        // 3. Fetch all relevant field configurations for this tenant and application
+        // This is more efficient than fetching one by one in a loop
+        List<TenantApplicationFieldConfig> allFieldConfigsForTenantApp =
+                tenantApplicationFieldConfigService.getConfigsByTenantApp(tenantId, applicationId);
+
+        // Convert list to a map for efficient lookup by fieldId
+        Map<Long, TenantApplicationFieldConfig> configMap = allFieldConfigsForTenantApp.stream()
+                .collect(Collectors.toMap(TenantApplicationFieldConfig::getFieldId, Function.identity()));
+
+        // 4. Merge data into EffectiveField DTOs
+        return fieldsInForm.stream()
+                .map(field -> {
+                    EffectiveField effectiveField = new EffectiveField();
+                    effectiveField.setFieldId(field.getFieldId());
+                    effectiveField.setFieldName(field.getFieldName());
+                    effectiveField.setFieldType(field.getFieldType());
+                    effectiveField.setInputType(field.getInputType());
+                    effectiveField.setFormId(field.getFormId());
+                    effectiveField.setPageId(field.getPageId()); // PageId is derived from Form
+
+                    // Set audit fields
+                    effectiveField.setCreatedAt(field.getCreatedAt());
+                    effectiveField.setUpdatedAt(field.getUpdatedAt());
+                    effectiveField.setCreatedBy(field.getCreatedBy());
+                    effectiveField.setUpdatedBy(field.getUpdatedBy());
+
+                    // Apply default values first
+                    effectiveField.setIsEnabled(true); // Default enabled
+                    effectiveField.setLabel(field.getDefaultLabel());
+                    effectiveField.setValidationRules(field.getDefaultValidationRules());
+
+                    // Apply overrides from TenantApplicationFieldConfig if present
+                    TenantApplicationFieldConfig config = configMap.get(field.getFieldId());
+                    if (config != null) {
+                        effectiveField.setIsEnabled(config.getIsEnabled());
+                        if (config.getCustomLabel() != null) {
+                            effectiveField.setLabel(config.getCustomLabel());
+                        }
+                        if (config.getCustomValidationRules() != null) {
+                            effectiveField.setValidationRules(config.getCustomValidationRules());
+                        }
+                    }
+                    return effectiveField;
+                })
+                .collect(Collectors.toList());
+    }
