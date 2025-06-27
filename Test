@@ -1,61 +1,73 @@
-// NEW: Orchestration method to get fields with merged configurations
+   // NEW: Method for bulk update of field configurations for a form
     @Override
-    public List<EffectiveField> getFieldsWithConfigForForm(Long tenantId, Long applicationId, Long formId) {
-        // 1. Validate existence of tenant, application, form
-        // CORRECTED: Use injected repositories for validation
+    @Transactional
+    public List<TenantApplicationFieldConfig> updateFieldConfigsForForm(
+            Long tenantId, Long applicationId, Long formId, List<TenantApplicationFieldConfigUpdateRequest> requests) {
+
+        // 1. Validate existence of tenant, application, and form
         tenantRepository.findById(tenantId)
                 .orElseThrow(() -> new ResourceNotFoundException("Tenant not found with ID: " + tenantId));
         applicationRepository.findById(applicationId)
                 .orElseThrow(() -> new ResourceNotFoundException("Application not found with ID: " + applicationId));
-        formRepository.findById(formId)
+        Form form = formRepository.findById(formId) // Get the form to validate its existence
                 .orElseThrow(() -> new ResourceNotFoundException("Form not found with ID: " + formId));
 
-        // 2. Fetch all fields for the given form
-        List<Field> fieldsInForm = fieldRepository.findByFormId(formId);
 
-        // 3. Fetch all relevant field configurations for this tenant and application
-        // This is more efficient than fetching one by one in a loop
-        List<TenantApplicationFieldConfig> allFieldConfigsForTenantApp =
-                tenantApplicationFieldConfigService.getConfigsByTenantApp(tenantId, applicationId);
+        // 2. Get all fields that belong to this specific form
+        List<Field> fieldsInThisForm = fieldRepository.findByFormId(formId);
+        Set<Long> fieldIdsInThisForm = fieldsInThisForm.stream()
+                                                    .map(Field::getFieldId)
+                                                    .collect(Collectors.toSet());
 
-        // Convert list to a map for efficient lookup by fieldId
-        Map<Long, TenantApplicationFieldConfig> configMap = allFieldConfigsForTenantApp.stream()
+        // 3. Fetch all existing field configurations for this tenant and application
+        List<TenantApplicationFieldConfig> existingConfigsForTenantApp =
+                configRepository.findByTenantIdAndApplicationId(tenantId, applicationId);
+
+        // Map existing configs by fieldId for efficient lookup
+        Map<Long, TenantApplicationFieldConfig> existingConfigMap = existingConfigsForTenantApp.stream()
                 .collect(Collectors.toMap(TenantApplicationFieldConfig::getFieldId, Function.identity()));
 
-        // 4. Merge data into EffectiveField DTOs
-        return fieldsInForm.stream()
-                .map(field -> {
-                    EffectiveField effectiveField = new EffectiveField();
-                    effectiveField.setFieldId(field.getFieldId());
-                    effectiveField.setFieldName(field.getFieldName());
-                    effectiveField.setFieldType(field.getFieldType());
-                    effectiveField.setInputType(field.getInputType());
-                    effectiveField.setFormId(field.getFormId());
-                    effectiveField.setPageId(field.getPageId()); // PageId is derived from Form
+        Set<Long> processedFieldIds = new HashSet<>();
+        List<TenantApplicationFieldConfig> updatedConfigs = new java.util.ArrayList<>();
 
-                    // Set audit fields
-                    effectiveField.setCreatedAt(field.getCreatedAt());
-                    effectiveField.setUpdatedAt(field.getUpdatedAt());
-                    effectiveField.setCreatedBy(field.getCreatedBy());
-                    effectiveField.setUpdatedBy(field.getUpdatedBy());
+        // 4. Process incoming requests (create/update)
+        for (TenantApplicationFieldConfigUpdateRequest request : requests) {
+            Long fieldId = request.getFieldId(); // Assuming fieldId is part of the update request DTO
 
-                    // Apply default values first
-                    effectiveField.setIsEnabled(true); // Default enabled
-                    effectiveField.setLabel(field.getDefaultLabel());
-                    effectiveField.setValidationRules(field.getDefaultValidationRules());
+            // Validate that the field in the request actually belongs to the specified form
+            if (!fieldIdsInThisForm.contains(fieldId)) {
+                throw new BadRequestException("Field ID " + fieldId + " does not belong to Form ID " + formId + " and cannot be configured via this endpoint.");
+            }
 
-                    // Apply overrides from TenantApplicationFieldConfig if present
-                    TenantApplicationFieldConfig config = configMap.get(field.getFieldId());
-                    if (config != null) {
-                        effectiveField.setIsEnabled(config.getIsEnabled());
-                        if (config.getCustomLabel() != null) {
-                            effectiveField.setLabel(config.getCustomLabel());
-                        }
-                        if (config.getCustomValidationRules() != null) {
-                            effectiveField.setValidationRules(config.getCustomValidationRules());
-                        }
-                    }
-                    return effectiveField;
-                })
+            TenantApplicationFieldConfig config = existingConfigMap.get(fieldId);
+            boolean isNew = (config == null);
+
+            if (isNew) {
+                config = new TenantApplicationFieldConfig();
+                config.setTenantId(tenantId);
+                config.setApplicationId(applicationId);
+                config.setFieldId(fieldId);
+                config.setCreatedBy("system_bulk_create");
+            }
+
+            config.setIsEnabled(request.getIsEnabled());
+            config.setCustomLabel(request.getCustomLabel());
+            config.setCustomValidationRules(request.getCustomValidationRules());
+            config.setUpdatedBy("system_bulk_update");
+
+            updatedConfigs.add(configRepository.save(config));
+            processedFieldIds.add(fieldId);
+        }
+
+        // 5. Delete configurations for fields that existed but are not in the current request
+        //    AND belong to the current form.
+        List<TenantApplicationFieldConfig> configsToDelete = existingConfigsForTenantApp.stream()
+                .filter(existingConfig ->
+                        fieldIdsInThisForm.contains(existingConfig.getFieldId()) && // Only consider fields from this form
+                        !processedFieldIds.contains(existingConfig.getFieldId()))
                 .collect(Collectors.toList());
+
+        configRepository.deleteAll(configsToDelete);
+
+        return updatedConfigs;
     }
