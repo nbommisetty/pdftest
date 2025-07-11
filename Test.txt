@@ -1,0 +1,81 @@
+public interface TenantApplicationFeatureConfigService {
+    EffectiveFeatureConfig getFeatureWithNestedConfigByNames(String tenantName, String applicationName, String roleName, String featureName);
+}
+
+@GetMapping("/tenants/{tenantName}/applications/{applicationName}/roles/{roleName}/features/{featureName}/nested-config")
+    @Tag(name = "Tenant Feature Configuration")
+    @Operation(summary = "Get full nested feature configuration by names",
+               description = "Fetches the complete nested configuration (feature, pages, forms, fields) " +
+                             "for a given tenant, application, role, and feature, identified by their names. " +
+                             "The effective theme and field properties are resolved hierarchically.")
+    public ResponseEntity<EffectiveFeatureConfig> getNestedFeatureConfigByNames(
+            @PathVariable String tenantName,
+            @PathVariable String applicationName,
+            @PathVariable("roleName") String roleNameStr,
+            @PathVariable String featureName) {
+        // Resolve roleName string to null if "unauthenticated" or "null"
+        String roleName = ("unauthenticated".equalsIgnoreCase(roleNameStr) || "null".equalsIgnoreCase(roleNameStr)) ? null : roleNameStr;
+        EffectiveFeatureConfig config = tenantApplicationFeatureConfigService.getFeatureWithNestedConfigByNames(tenantName, applicationName, roleName, featureName);
+        return ResponseEntity.ok(config);
+    }
+
+/**
+     * Retrieves the effective feature configuration, potentially with nested configurations,
+     * for a given tenant, application, role, and feature name.
+     * This method first resolves all necessary IDs (tenant, application, role, feature)
+     * from their respective names and then delegates to an ID-based resolution method.
+     *
+     * @param tenantName The name of the tenant.
+     * @param applicationName The name of the application.
+     * @param roleName The name of the role.
+     * @param featureName The name of the feature.
+     * @return An EffectiveFeatureConfig object representing the resolved configuration,
+     * or null if no configuration is found at any step of ID resolution or config lookup.
+     */
+    @Override
+    public EffectiveFeatureConfig getFeatureWithNestedConfigByNames(
+            String tenantName,
+            String applicationName,
+            String roleName,
+            String featureName) {
+
+        // Step 1: Resolve IDs from names using dedicated repositories
+        String tenantId = tenantRepository.findByName(tenantName)
+                .map(Tenant::getId)
+                .orElse(null);
+        if (tenantId == null) {
+            System.out.println("Tenant not found for name: " + tenantName);
+            return null;
+        }
+        System.out.println("Resolved Tenant ID: " + tenantId + " for name: " + tenantName);
+
+        String applicationId = applicationRepository.findByName(applicationName)
+                .map(Application::getId)
+                .orElse(null);
+        if (applicationId == null) {
+            System.out.println("Application not found for name: " + applicationName);
+            return null;
+        }
+        System.out.println("Resolved Application ID: " + applicationId + " for name: " + applicationName);
+
+        String roleId = userRoleRepository.findByName(roleName)
+                .map(UserRole::getId)
+                .orElse(null);
+        if (roleId == null) {
+            System.out.println("Role not found for name: " + roleName);
+            return null;
+        }
+        System.out.println("Resolved Role ID: " + roleId + " for name: " + roleName);
+
+        String initialFeatureId = featureRepository.findByName(featureName)
+                .map(Feature::getId)
+                .orElse(null);
+        if (initialFeatureId == null) {
+            System.out.println("Feature not found for name: " + featureName);
+            return null;
+        }
+        System.out.println("Resolved Initial Feature ID: " + initialFeatureId + " for name: " + featureName);
+
+        // Step 2: Delegate to the ID-based resolution method
+        return getFeatureConfigByIds(tenantId, applicationId, roleId, initialFeatureId);
+    }
