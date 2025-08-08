@@ -1,0 +1,53 @@
+Here is the updated step-by-step description matching the new "just-in-time" token creation sequence.
+
+Phase 1: App Startup, Login & Component Loading
+This phase now covers everything up to the point where the web component's code is loaded and ready, but before the secure token has been created.
+
+Fetch Manifest: The Vendor App (Frontend) starts and makes a network request to the Bank's CDN to fetch the manifest.json file.
+
+Receive Manifest: The Bank's CDN returns the manifest.json content.
+
+Load Shared Dependencies: The Vendor App parses the manifest and loads any required shared libraries (like React) that are not already present.
+
+User Logs In: The user provides their credentials and authenticates with the Vendor App. The application now knows the user's identity but has not yet requested a specific token for bank services.
+
+User Navigates: The authenticated user navigates to a specific page (e.g., "Wire Transfer") that will use one of the bank's components.
+
+Look Up Component: The Vendor App consults the manifest to find the details for the required <bank-wire-transfer> component.
+
+Request Component Bundles: Using the URLs from the manifest, the Vendor App requests the component's JavaScript and CSS files from the Bank's CDN.
+
+Receive Component Bundles: The Bank's CDN returns the files.
+
+Define Custom Element: The Vendor App injects the component's script. This script executes and registers the custom element (e.g., <bank-wire-transfer>) with the browser. The component's code is now loaded but it hasn't been rendered to the screen yet.
+
+Phase 2: "Just-in-Time" Token Creation & Authenticated API Call
+This phase is triggered by the user's intent to use the specific feature. The application gets the token at the last responsible moment before rendering the component.
+
+Request Secure Token: Now that the app needs to render the component, the Vendor Frontend requests a secure token from the Vendor Backend.
+
+Fetch Bank's Public Key: To encrypt the token, the Vendor Backend makes an API call to the Bank's JWKS URI to fetch the bank's public encryption key.
+
+Receive Public Key: The Bank's JWKS URI returns the required public key.
+
+Generate JWS then JWE: The Vendor Backend creates a JWS (by signing claims with its private key) and then encrypts that JWS using the bank's public key, producing the final JWE token.
+
+Return Encrypted Token: The Vendor Backend sends the secure, opaque JWE token back to the Vendor Frontend.
+
+Render Component with Token: The Vendor Frontend, now equipped with both the defined custom element and the secure token, renders the Bank Component and passes the JWE to it as a property (prop).
+
+User Submits Action: The user interacts with the Bank Component and submits a request (e.g., clicks "Send Money").
+
+Make API Call: The Bank Component sends a request to the Bank Backend API, placing the JWE from its props into the Authorization: Bearer <token> HTTP header.
+
+Decrypt JWE: The Bank Backend receives the request and uses its own private key to decrypt the JWE, revealing the original JWS.
+
+Fetch Vendor's Public Key: To verify the JWS signature, the Bank Backend makes a call to the Vendor's JWKS URI to get the vendor's public signing key.
+
+Receive Public Key: The Vendor's JWKS URI returns the required public key.
+
+Verify JWS: The Bank Backend verifies the JWS's signature and validates all its claims (issuer, audience, expiration, etc.).
+
+Process Business Logic: If both decryption and verification succeed, the Bank Backend trusts the token and processes the user's request.
+
+Return API Response: The Bank Backend sends a final success or failure response back to the Bank Component, which updates its UI to inform the user of the outcome.
