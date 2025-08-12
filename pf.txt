@@ -1,53 +1,35 @@
-Here is the updated step-by-step description matching the new "just-in-time" token creation sequence.
+2. Technology and Integration Fit Questions
+This section focuses on the technical architecture of the XYZ platform and its flexibility to integrate with your bank's existing ecosystem.
 
-Phase 1: App Startup, Login & Component Loading
-This phase now covers everything up to the point where the web component's code is loaded and ready, but before the secure token has been created.
+Platform Architecture and Customization:
 
-Fetch Manifest: The Vendor App (Frontend) starts and makes a network request to the Bank's CDN to fetch the manifest.json file.
+Describe the "Engagement Banking Platform" architecture. Is it a monolithic application or a microservices-based, composable platform?
 
-Receive Manifest: The Bank's CDN returns the manifest.json content.
+What is the "buy-and-build" model, and how does it work in practice? Can we, as the bank, build our own features on top of the XYZ platform?
 
-Load Shared Dependencies: The Vendor App parses the manifest and loads any required shared libraries (like React) that are not already present.
+You mentioned Web/Mobile SDKs and a Design System. Can you provide a detailed overview of these tools? What technologies are they based on?
 
-User Logs In: The user provides their credentials and authenticates with the Vendor App. The application now knows the user's identity but has not yet requested a specific token for bank services.
+How can our internal technology team, using their own developers and technologies, build custom web components or micro-frontends and seamlessly integrate them into the XYZ experience?
 
-User Navigates: The authenticated user navigates to a specific page (e.g., "Wire Transfer") that will use one of the bank's components.
+What is the process for deploying custom features or extensions to the platform? Do these need to be reviewed or certified by XYZ?
 
-Look Up Component: The Vendor App consults the manifest to find the details for the required <bank-wire-transfer> component.
+Integration and Data:
 
-Request Component Bundles: Using the URLs from the manifest, the Vendor App requests the component's JavaScript and CSS files from the Bank's CDN.
+XYZ is "core-agnostic." How does the platform integrate with our existing core banking systems, CRM, and other back-end systems? What is the standard API layer or integration framework?
 
-Receive Component Bundles: The Bank's CDN returns the files.
+Can we integrate with third-party fintechs and other providers through the XYZ platform? Do you have an existing marketplace of pre-built connectors?
 
-Define Custom Element: The Vendor App injects the component's script. This script executes and registers the custom element (e.g., <bank-wire-transfer>) with the browser. The component's code is now loaded but it hasn't been rendered to the screen yet.
+What is your approach to data? How does the platform unify customer data from various sources to enable a single customer view and personalized experiences?
 
-Phase 2: "Just-in-Time" Token Creation & Authenticated API Call
-This phase is triggered by the user's intent to use the specific feature. The application gets the token at the last responsible moment before rendering the component.
+Does the platform provide an event-driven architecture, and can we subscribe to events from the XYZ platform to trigger actions in our own systems?
 
-Request Secure Token: Now that the app needs to render the component, the Vendor Frontend requests a secure token from the Vendor Backend.
+3. Commercial and Legal Questions (Intellectual Property and Licensing)
+This is a critical area to ensure your bank maintains control over its proprietary digital experiences and intellectual property (IP).
 
-Fetch Bank's Public Key: To encrypt the token, the Vendor Backend makes an API call to the Bank's JWKS URI to fetch the bank's public encryption key.
+Customization and IP: If we build a custom feature or journey using the XYZ platform and SDKs, who owns the intellectual property of that code? Will XYZ have any rights to use, license, or sell that same code to other clients?
 
-Receive Public Key: The Bank's JWKS URI returns the required public key.
+Licensing Model: How is the XYZ platform licensed? Is it a per-user, per-feature, or subscription-based model? What is the cost structure for adding new lines of business or custom functionalities?
 
-Generate JWS then JWE: The Vendor Backend creates a JWS (by signing claims with its private key) and then encrypts that JWS using the bank's public key, producing the final JWE token.
+Source Code Access: Will the bank have access to the source code for the XYZ platform, or is it a black-box system? If not, what is the process for debugging or troubleshooting issues within the platform?
 
-Return Encrypted Token: The Vendor Backend sends the secure, opaque JWE token back to the Vendor Frontend.
-
-Render Component with Token: The Vendor Frontend, now equipped with both the defined custom element and the secure token, renders the Bank Component and passes the JWE to it as a property (prop).
-
-User Submits Action: The user interacts with the Bank Component and submits a request (e.g., clicks "Send Money").
-
-Make API Call: The Bank Component sends a request to the Bank Backend API, placing the JWE from its props into the Authorization: Bearer <token> HTTP header.
-
-Decrypt JWE: The Bank Backend receives the request and uses its own private key to decrypt the JWE, revealing the original JWS.
-
-Fetch Vendor's Public Key: To verify the JWS signature, the Bank Backend makes a call to the Vendor's JWKS URI to get the vendor's public signing key.
-
-Receive Public Key: The Vendor's JWKS URI returns the required public key.
-
-Verify JWS: The Bank Backend verifies the JWS's signature and validates all its claims (issuer, audience, expiration, etc.).
-
-Process Business Logic: If both decryption and verification succeed, the Bank Backend trusts the token and processes the user's request.
-
-Return API Response: The Bank Backend sends a final success or failure response back to the Bank Component, which updates its UI to inform the user of the outcome.
+Exit Strategy: What happens if the bank decides to move away from the XYZ platform in the future? What is the process for migrating our data and any custom-built features? Are there any restrictions or costs associated with this process?
