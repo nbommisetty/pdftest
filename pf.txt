@@ -1,35 +1,148 @@
-2. Technology and Integration Fit Questions
-This section focuses on the technical architecture of the XYZ platform and its flexibility to integrate with your bank's existing ecosystem.
+workspace "Online Account Origination System" "This is the C4 model for the OAO microservices redesign." {
 
-Platform Architecture and Customization:
+    model {
+        # --- People and Systems (Level 1: System Context) ---
+        customer = person "Bank Customer" "A person wanting to open a new bank account."
+        oaoSystem = softwareSystem "Online Account Origination System" "Allows customers to apply for and open new bank accounts online." {
+            # --- Containers (Level 2: Container Diagram) ---
+            frontendApp = container "Frontend Application" "Provides the user interface for account origination." "Angular/React SPA" "Frontend"
+            apiGateway = container "API Gateway" "Routes all external requests to the appropriate internal services." ".NET" "API"
 
-Describe the "Engagement Banking Platform" architecture. Is it a monolithic application or a microservices-based, composable platform?
+            group "Core OAO Microservices" {
+                orchestrator = container "Application Processing & Orchestration" "Manages the end-to-end OAO workflow (Saga Orchestrator)." ".NET" "Microservice"
+                customerService = container "Customer Onboarding & Management" "Manages customer PII and profile data." ".NET" "Microservice"
+                productService = container "Product Selection & Eligibility" "Provides product catalog and eligibility rules." ".NET" "Microservice"
+                kycService = container "Identity Verification & Fraud (KYC/AML)" "Interfaces with KYC/AML providers." ".NET" "Microservice"
+                creditService = container "Credit Check & Risk Assessment" "Interfaces with credit bureaus." ".NET" "Microservice"
+                fundingService = container "Funding & Initial Deposit" "Interfaces with payment gateways." ".NET" "Microservice"
+                accountService = container "Account Creation & Core Banking Int." "Interfaces with the Core Banking System." ".NET" "Microservice"
+            }
 
-What is the "buy-and-build" model, and how does it work in practice? Can we, as the bank, build our own features on top of the XYZ platform?
+            group "Supporting Microservices" {
+                authService = container "Authentication Service" "Handles user authentication." ".NET" "Microservice"
+                docService = container "Document Management Service" "Manages uploaded documents." ".NET" "Microservice"
+                notificationService = container "Notification Service" "Sends emails and SMS to customers." ".NET" "Microservice"
+                configDb = container "Configuration Database" "Stores shared configuration for all services." "SQL/NoSQL" "Database"
+                auditDb = container "Audit Log Database" "Stores audit trails from all services." "SQL/NoSQL" "Database"
+            }
+        }
 
-You mentioned Web/Mobile SDKs and a Design System. Can you provide a detailed overview of these tools? What technologies are they based on?
+        # --- External Systems ---
+        coreBanking = softwareSystem "Core Banking System" "The main system of record for all bank accounts." "External"
+        kycProviders = softwareSystem "KYC/AML Providers" "Third-party services for identity verification and fraud checks." "External"
+        creditBureau = softwareSystem "Credit Bureau" "Provides credit history and scores for applicants." "External"
+        paymentGateway = softwareSystem "Payment Gateway" "Processes initial account funding transactions." "External"
 
-How can our internal technology team, using their own developers and technologies, build custom web components or micro-frontends and seamlessly integrate them into the XYZ experience?
+        # --- New External Systems for Analytics, Reporting & Observability ---
+        adobeLaunch = softwareSystem "Adobe Launch" "Tag Management System for clickstream analytics." "External"
+        snowflake = softwareSystem "Snowflake" "Cloud Data Warehouse for analytics and reporting." "External"
+        bic = softwareSystem "Business Intelligence Cloud" "Generates reports and dashboards from the data warehouse." "External"
+        splunk = softwareSystem "Splunk" "Log aggregation and observability platform." "External"
+        sessionReplay = softwareSystem "Session Replay System" "Tools like TeaLeaf or LogRocket for frontend monitoring." "External"
+        apm = softwareSystem "APM System" "Tools like Dynatrace for application performance monitoring." "External"
 
-What is the process for deploying custom features or extensions to the platform? Do these need to be reviewed or certified by XYZ?
 
-Integration and Data:
+        # --- Level 1 Relationships ---
+        customer -> oaoSystem "Applies for a new bank account using"
+        oaoSystem -> coreBanking "Creates new accounts in"
+        oaoSystem -> kycProviders "Verifies customer identity using"
+        oaoSystem -> creditBureau "Checks credit score using"
+        oaoSystem -> paymentGateway "Processes initial deposit using"
+        
+        # New Level 1 Relationships
+        oaoSystem -> adobeLaunch "Sends clickstream data to"
+        oaoSystem -> snowflake "Pushes application and event data to"
+        bic -> snowflake "Generates reports from"
+        oaoSystem -> splunk "Sends logs and metrics to"
+        oaoSystem -> sessionReplay "Sends session replay data to"
+        oaoSystem -> apm "Sends performance metrics to"
 
-XYZ is "core-agnostic." How does the platform integrate with our existing core banking systems, CRM, and other back-end systems? What is the standard API layer or integration framework?
+        # --- Level 2 Relationships ---
+        customer -> frontendApp "Uses" "HTTPS"
+        frontendApp -> apiGateway "Makes API calls to" "HTTPS/JSON"
 
-Can we integrate with third-party fintechs and other providers through the XYZ platform? Do you have an existing marketplace of pre-built connectors?
+        apiGateway -> authService "Delegates authentication to" "HTTPS/JSON"
+        apiGateway -> orchestrator "Routes workflow requests to" "HTTPS/JSON"
+        apiGateway -> customerService "Routes customer data requests to" "HTTPS/JSON"
 
-What is your approach to data? How does the platform unify customer data from various sources to enable a single customer view and personalized experiences?
+        orchestrator -> customerService "Calls for customer data management" "HTTPS/JSON"
+        orchestrator -> productService "Calls for product eligibility checks" "HTTPS/JSON"
+        orchestrator -> kycService "Calls for identity verification" "HTTPS/JSON"
+        orchestrator -> creditService "Calls for credit checks" "HTTPS/JSON"
+        orchestrator -> fundingService "Calls for initial deposit" "HTTPS/JSON"
+        orchestrator -> accountService "Calls to create account" "HTTPS/JSON"
+        orchestrator -> docService "Calls to manage documents" "HTTPS/JSON"
+        orchestrator -> notificationService "Calls to send updates" "HTTPS/JSON"
+        
+        # Relationships to shared supporting DBs
+        orchestrator -> configDb "Reads configuration from" "JDBC/ODBC"
+        orchestrator -> auditDb "Writes audit logs to" "JDBC/ODBC"
+        customerService -> auditDb "Writes audit logs to" "JDBC/ODBC"
+        # (Can add more relationships from other services to Config/Audit DBs as needed)
 
-Does the platform provide an event-driven architecture, and can we subscribe to events from the XYZ platform to trigger actions in our own systems?
+        kycService -> kycProviders "Makes API calls to" "HTTPS/JSON"
+        creditService -> creditBureau "Makes API calls to" "HTTPS/JSON"
+        fundingService -> paymentGateway "Makes API calls to" "HTTPS/JSON"
+        accountService -> coreBanking "Makes API calls to" "HTTPS/JSON"
 
-3. Commercial and Legal Questions (Intellectual Property and Licensing)
-This is a critical area to ensure your bank maintains control over its proprietary digital experiences and intellectual property (IP).
+        # New Level 2 Relationships for Analytics, Reporting & Observability
+        frontendApp -> adobeLaunch "Sends clickstream data to" "JS Tag"
+        frontendApp -> sessionReplay "Sends session data to" "JS Tag"
 
-Customization and IP: If we build a custom feature or journey using the XYZ platform and SDKs, who owns the intellectual property of that code? Will XYZ have any rights to use, license, or sell that same code to other clients?
+        orchestrator -> snowflake "Pushes workflow event data to" "ETL/Stream"
+        customerService -> snowflake "Pushes customer data to" "ETL/Stream"
 
-Licensing Model: How is the XYZ platform licensed? Is it a per-user, per-feature, or subscription-based model? What is the cost structure for adding new lines of business or custom functionalities?
+        orchestrator -> splunk "Sends logs to" "API/Agent"
+        customerService -> splunk "Sends logs to" "API/Agent"
+        # (All other microservices would also send logs to Splunk)
 
-Source Code Access: Will the bank have access to the source code for the XYZ platform, or is it a black-box system? If not, what is the process for debugging or troubleshooting issues within the platform?
+        orchestrator -> apm "Sends traces and metrics to" "Agent"
+        customerService -> apm "Sends traces and metrics to" "Agent"
+        # (All other microservices would also send metrics to the APM system)
+    }
 
-Exit Strategy: What happens if the bank decides to move away from the XYZ platform in the future? What is the process for migrating our data and any custom-built features? Are there any restrictions or costs associated with this process?
+    views {
+        systemContext oaoSystem "SystemContext" "The System Context diagram for the Online Account Origination System." {
+            include *
+            autoLayout
+        }
+
+        container oaoSystem "Containers" "The Container diagram for the Online Account Origination System." {
+            include *
+            autoLayout
+        }
+
+        styles {
+            element "Person" {
+                background #08427B
+                color #ffffff
+                shape Person
+            }
+            element "Software System" {
+                background #1168BD
+                color #ffffff
+            }
+            element "External" {
+                background #666666
+                color #ffffff
+            }
+            element "Container" {
+                background #438DD5
+                color #ffffff
+            }
+            element "API" {
+                background #00A884
+            }
+            element "Microservice" {
+                background #438DD5
+            }
+            element "Database" {
+                background #857151
+                shape Cylinder
+            }
+            element "Frontend" {
+                background #999999
+            }
+        }
+    }
+}
