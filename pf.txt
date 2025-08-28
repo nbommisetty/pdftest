@@ -1,148 +1,135 @@
-workspace "Online Account Origination System" "This is the C4 model for the OAO microservices redesign." {
+"employmentInformation": {
+      "type": ["object", "null"],
+      "description": "Details about the individual customer's current employment.",
+      "$ref": "#/$defs/EmploymentInformation"
+    },
 
-    model {
-        # --- People and Systems (Level 1: System Context) ---
-        customer = person "Bank Customer" "A person wanting to open a new bank account."
-        oaoSystem = softwareSystem "Online Account Origination System" "Allows customers to apply for and open new bank accounts online." {
-            # --- Containers (Level 2: Container Diagram) ---
-            frontendApp = container "Frontend Application" "Provides the user interface for account origination." "Angular/React SPA" "Frontend"
-            apiGateway = container "API Gateway" "Routes all external requests to the appropriate internal services." ".NET" "API"
 
-            group "Core OAO Microservices" {
-                orchestrator = container "Application Processing & Orchestration" "Manages the end-to-end OAO workflow (Saga Orchestrator)." ".NET" "Microservice"
-                customerService = container "Customer Onboarding & Management" "Manages customer PII and profile data." ".NET" "Microservice"
-                productService = container "Product Selection & Eligibility" "Provides product catalog and eligibility rules." ".NET" "Microservice"
-                kycService = container "Identity Verification & Fraud (KYC/AML)" "Interfaces with KYC/AML providers." ".NET" "Microservice"
-                creditService = container "Credit Check & Risk Assessment" "Interfaces with credit bureaus." ".NET" "Microservice"
-                fundingService = container "Funding & Initial Deposit" "Interfaces with payment gateways." ".NET" "Microservice"
-                accountService = container "Account Creation & Core Banking Int." "Interfaces with the Core Banking System." ".NET" "Microservice"
-            }
-
-            group "Supporting Microservices" {
-                authService = container "Authentication Service" "Handles user authentication." ".NET" "Microservice"
-                docService = container "Document Management Service" "Manages uploaded documents." ".NET" "Microservice"
-                notificationService = container "Notification Service" "Sends emails and SMS to customers." ".NET" "Microservice"
-                configDb = container "Configuration Database" "Stores shared configuration for all services." "SQL/NoSQL" "Database"
-                auditDb = container "Audit Log Database" "Stores audit trails from all services." "SQL/NoSQL" "Database"
-            }
+{
+        "type": "object",
+        "required": ["type", "value"],
+        "properties": {
+          "type": {
+            "type": "string",
+            "description": "Type of identifier"
+          },
+          "value": {
+            "type": "string",
+            "description": "The identifier value."
+          }
         }
-
-        # --- External Systems ---
-        coreBanking = softwareSystem "Core Banking System" "The main system of record for all bank accounts." "External"
-        kycProviders = softwareSystem "KYC/AML Providers" "Third-party services for identity verification and fraud checks." "External"
-        creditBureau = softwareSystem "Credit Bureau" "Provides credit history and scores for applicants." "External"
-        paymentGateway = softwareSystem "Payment Gateway" "Processes initial account funding transactions." "External"
-
-        # --- New External Systems for Analytics, Reporting & Observability ---
-        adobeLaunch = softwareSystem "Adobe Launch" "Tag Management System for clickstream analytics." "External"
-        snowflake = softwareSystem "Snowflake" "Cloud Data Warehouse for analytics and reporting." "External"
-        bic = softwareSystem "Business Intelligence Cloud" "Generates reports and dashboards from the data warehouse." "External"
-        splunk = softwareSystem "Splunk" "Log aggregation and observability platform." "External"
-        sessionReplay = softwareSystem "Session Replay System" "Tools like TeaLeaf or LogRocket for frontend monitoring." "External"
-        apm = softwareSystem "APM System" "Tools like Dynatrace for application performance monitoring." "External"
-
-
-        # --- Level 1 Relationships ---
-        customer -> oaoSystem "Applies for a new bank account using"
-        oaoSystem -> coreBanking "Creates new accounts in"
-        oaoSystem -> kycProviders "Verifies customer identity using"
-        oaoSystem -> creditBureau "Checks credit score using"
-        oaoSystem -> paymentGateway "Processes initial deposit using"
-        
-        # New Level 1 Relationships
-        oaoSystem -> adobeLaunch "Sends clickstream data to"
-        oaoSystem -> snowflake "Pushes application and event data to"
-        bic -> snowflake "Generates reports from"
-        oaoSystem -> splunk "Sends logs and metrics to"
-        oaoSystem -> sessionReplay "Sends session replay data to"
-        oaoSystem -> apm "Sends performance metrics to"
-
-        # --- Level 2 Relationships ---
-        customer -> frontendApp "Uses" "HTTPS"
-        frontendApp -> apiGateway "Makes API calls to" "HTTPS/JSON"
-
-        apiGateway -> authService "Delegates authentication to" "HTTPS/JSON"
-        apiGateway -> orchestrator "Routes workflow requests to" "HTTPS/JSON"
-        apiGateway -> customerService "Routes customer data requests to" "HTTPS/JSON"
-
-        orchestrator -> customerService "Calls for customer data management" "HTTPS/JSON"
-        orchestrator -> productService "Calls for product eligibility checks" "HTTPS/JSON"
-        orchestrator -> kycService "Calls for identity verification" "HTTPS/JSON"
-        orchestrator -> creditService "Calls for credit checks" "HTTPS/JSON"
-        orchestrator -> fundingService "Calls for initial deposit" "HTTPS/JSON"
-        orchestrator -> accountService "Calls to create account" "HTTPS/JSON"
-        orchestrator -> docService "Calls to manage documents" "HTTPS/JSON"
-        orchestrator -> notificationService "Calls to send updates" "HTTPS/JSON"
-        
-        # Relationships to shared supporting DBs
-        orchestrator -> configDb "Reads configuration from" "JDBC/ODBC"
-        orchestrator -> auditDb "Writes audit logs to" "JDBC/ODBC"
-        customerService -> auditDb "Writes audit logs to" "JDBC/ODBC"
-        # (Can add more relationships from other services to Config/Audit DBs as needed)
-
-        kycService -> kycProviders "Makes API calls to" "HTTPS/JSON"
-        creditService -> creditBureau "Makes API calls to" "HTTPS/JSON"
-        fundingService -> paymentGateway "Makes API calls to" "HTTPS/JSON"
-        accountService -> coreBanking "Makes API calls to" "HTTPS/JSON"
-
-        # New Level 2 Relationships for Analytics, Reporting & Observability
-        frontendApp -> adobeLaunch "Sends clickstream data to" "JS Tag"
-        frontendApp -> sessionReplay "Sends session data to" "JS Tag"
-
-        orchestrator -> snowflake "Pushes workflow event data to" "ETL/Stream"
-        customerService -> snowflake "Pushes customer data to" "ETL/Stream"
-
-        orchestrator -> splunk "Sends logs to" "API/Agent"
-        customerService -> splunk "Sends logs to" "API/Agent"
-        # (All other microservices would also send logs to Splunk)
-
-        orchestrator -> apm "Sends traces and metrics to" "Agent"
-        customerService -> apm "Sends traces and metrics to" "Agent"
-        # (All other microservices would also send metrics to the APM system)
-    }
-
-    views {
-        systemContext oaoSystem "SystemContext" "The System Context diagram for the Online Account Origination System." {
-            include *
-            autoLayout
+      }
+{
+        "type": "object",
+        "required": ["documentType", "documentNumber", "issuingCountry"],
+        "properties": {
+          "documentType": {
+            "type": "string",
+            "description": "Type of document"
+          },
+          "documentNumber": {
+            "type": "string",
+            "description": "The document number."
+          },
+          "issuingCountry": {
+            "type": "string",
+            "pattern": "^[A-Z]{2}$",
+            "description": "ISO 3166-1 alpha-2 code of the issuing country."
+          },
+          "issueDate": {
+            "type": ["string", "null"],
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+            "description": "Optional issue date (YYYY-MM-DD)."
+          },
+          "expirationDate": {
+            "type": ["string", "null"],
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+            "description": "Optional expiration date (YYYY-MM-DD)."
+          }
         }
+      }
 
-        container oaoSystem "Containers" "The Container diagram for the Online Account Origination System." {
-            include *
-            autoLayout
+"EmploymentInformation": {
+      "type": "object",
+      "description": "Details about an individual customer's employment.",
+      "properties": {
+        "employerName": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "occupation": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "title": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "employmentStatus": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "EMPLOYED",
+            "SELF_EMPLOYED",
+            "UNEMPLOYED",
+            "RETIRED",
+            "STUDENT",
+            "UNSPECIFIED"
+          ]
+        },
+        "income": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Income"
+          }
         }
-
-        styles {
-            element "Person" {
-                background #08427B
-                color #ffffff
-                shape Person
-            }
-            element "Software System" {
-                background #1168BD
-                color #ffffff
-            }
-            element "External" {
-                background #666666
-                color #ffffff
-            }
-            element "Container" {
-                background #438DD5
-                color #ffffff
-            }
-            element "API" {
-                background #00A884
-            }
-            element "Microservice" {
-                background #438DD5
-            }
-            element "Database" {
-                background #857151
-                shape Cylinder
-            }
-            element "Frontend" {
-                background #999999
-            }
+      }
+    },
+    "Income": {
+      "type": "object",
+      "description": "A single income source for a customer.",
+      "required": [
+        "amount",
+        "currency",
+        "frequency",
+        "incomeType"
+      ],
+      "properties": {
+        "amount": {
+          "type": "number"
+        },
+        "currency": {
+          "type": "string",
+          "pattern": "^[A-Z]{3}$"
+        },
+        "frequency": {
+          "type": "string",
+          "enum": [
+            "ANNUAL",
+            "MONTHLY",
+            "BI-WEEKLY",
+            "WEEKLY"
+          ]
+        },
+        "incomeType": {
+          "type": "string",
+          "enum": [
+            "SALARY",
+            "BONUS",
+            "OVERTIME",
+            "BUSINESS_INCOME",
+            "INVESTMENT_INCOME",
+            "RETIREMENT_BENEFITS",
+            "OTHER"
+          ]
         }
-    }
-}
+      }
+    },
