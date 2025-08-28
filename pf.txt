@@ -1,12 +1,14 @@
-{
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://example.com/schemas/FDX-aligned-customer-profile.json",
-  "title": "FDX-Aligned Customer Profile (Retail/Individual Customers only)",
-  "description": "Canonical model compliant with Financial Data Exchange (FDX) API v5.2 standards for secure, reliable financial data sharing.",
-  "type": "object",
-  "fdx:version": "5.2",
-  "fdx:scopes": [
-    "ACCOUNTS_BASIC",
-    "PROFILE_DETAIL",
-    "TRANSACTIONS_DETAIL"
-  ],
+"employmentInformation": {
+    "employerName": "ACME Corp",
+    "occupation": "Software Engineering",
+    "title": "Senior Software Engineer",
+    "employmentStatus": "EMPLOYED",
+    "income": [
+      {
+        "amount": 95000,
+        "currency": "USD",
+        "frequency": "ANNUAL",
+        "incomeType": "SALARY"
+      }
+    ]
+  },
