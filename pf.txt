@@ -1,14 +1,199 @@
-"employmentInformation": {
-    "employerName": "ACME Corp",
-    "occupation": "Software Engineering",
-    "title": "Senior Software Engineer",
-    "employmentStatus": "EMPLOYED",
-    "income": [
-      {
-        "amount": 95000,
-        "currency": "USD",
-        "frequency": "ANNUAL",
-        "incomeType": "SALARY"
-      }
-    ]
-  },
+@startuml
+autonumber
+title MMM Onboarding Process Sequence Diagram
+
+actor "Client" as client
+participant "Online/Mobile Banking App" as bankingApp
+participant "RoboAdvisor Onboarding UI" as roboUI
+participant "RoboAdvisor BFF" as roboBFF
+participant "CIAM" as ciam
+participant "MMM" as mmm
+participant "Bank API Gateway" as apiGateway
+participant "Customer Profile Service" as profileService
+participant "Account Service" as accountService
+database "Core Banking System" as coreBanking
+participant "CodeConnect API Gateway" as codeConnect
+
+== Step 1: Authentication & Onboarding Intent ==
+client -> bankingApp: 1. Logs In (HTTPS)
+activate bankingApp
+bankingApp -> ciam: 2. Authenticates User (OpenID Connect)
+activate ciam
+ciam --> bankingApp: Authentication Successful
+deactivate ciam
+bankingApp -> client: Displays Dashboard
+client -> bankingApp: Clicks 'Open RoboAdvisor Account'
+
+== Step 2: Onboarding UI Launch & Data Verification ==
+bankingApp -> roboUI: 3. Launches Onboarding UI (URL Redirect)
+activate roboUI
+roboUI -> roboBFF: 4. Fetches Customer Profile
+activate roboBFF
+roboBFF -> profileService: Routes Request
+activate profileService
+profileService -> codeConnect: Fetches Demographics (Name, ID, Contact Info)
+activate codeConnect
+codeConnect -> coreBanking: Routes to Core Banking
+coreBanking --> codeConnect: Returns Demographics Data
+deactivate coreBanking
+deactivate codeConnect
+codeConnect --> profileService: Returns Demographics Data
+profileService -> codeConnect: Fetches Due Diligence Info (Employment, Citizenship)
+activate codeConnect
+codeConnect -> coreBanking: Routes to Core Banking
+coreBanking --> codeConnect: Returns Due Diligence Data
+deactivate coreBanking
+deactivate codeConnect
+codeConnect --> profileService: Returns Due Diligence Data
+deactivate profileService
+profileService --> roboBFF: Returns Full Customer Data
+deactivate roboBFF
+roboBFF --> roboUI: Returns Full Customer Data
+roboUI -> client: Displays Customer Data for Verification
+client -> roboUI: Verifies and/or Updates Data
+alt if data needs to be updated
+roboUI -> roboBFF: Gets OTP Devices for User
+activate roboBFF
+roboBFF -> ciam: Requests OTP Device List
+activate ciam
+ciam --> roboBFF: Returns OTP Device List
+deactivate ciam
+roboBFF --> roboUI: Returns OTP Device List
+deactivate roboBFF
+roboUI -> client: Asks Client to Select OTP Device
+client -> roboUI: Selects OTP Device
+roboUI -> roboBFF: Requests OTP
+activate roboBFF
+roboBFF -> ciam: Requests OTP
+activate ciam
+ciam -> twilio: Calls Twilio API to deliver OTP
+activate twilio
+twilio --> ciam: Delivers OTP
+deactivate twilio
+ciam --> roboBFF: Returns OTP
+deactivate ciam
+deactivate roboBFF
+roboUI -> client: Asks Client for OTP
+client -> roboUI: Provides OTP
+roboUI -> roboBFF: Verifies OTP
+activate roboBFF
+roboBFF -> ciam: Verifies OTP
+activate ciam
+ciam --> roboBFF: Returns Verification Status
+deactivate ciam
+deactivate roboBFF
+group Update Customer Information
+alt if mobile phone is updated
+roboUI -> roboBFF: Updates Mobile Phone
+activate roboBFF
+roboBFF -> profileService: Requests to update Mobile Phone
+activate profileService
+profileService -> codeConnect: Calls updateMobilePhone API
+activate codeConnect
+codeConnect -> coreBanking: Updates data in CIS profile
+coreBanking --> codeConnect: Confirmation
+deactivate coreBanking
+deactivate codeConnect
+codeConnect --> profileService: Confirmation
+deactivate profileService
+profileService --> roboBFF: Confirmation
+deactivate roboBFF
+end
+alt if email address is updated
+roboUI -> roboBFF: Updates Email Address
+activate roboBFF
+roboBFF -> profileService: Requests to update Email Address
+activate profileService
+profileService -> codeConnect: Calls updateEmailAddress API
+activate codeConnect
+codeConnect -> coreBanking: Updates data in CIS profile
+coreBanking --> codeConnect: Confirmation
+deactivate coreBanking
+deactivate codeConnect
+codeConnect --> profileService: Confirmation
+deactivate profileService
+profileService --> roboBFF: Confirmation
+deactivate roboBFF
+end
+alt if address is updated
+roboUI -> roboBFF: Updates Address
+activate roboBFF
+roboBFF -> profileService: Requests to update Address
+activate profileService
+profileService -> codeConnect: Calls updateAddress API
+activate codeConnect
+codeConnect -> coreBanking: Updates data in CIS profile
+coreBanking --> codeConnect: Confirmation
+deactivate coreBanking
+deactivate codeConnect
+codeConnect --> profileService: Confirmation
+deactivate profileService
+profileService --> roboBFF: Confirmation
+deactivate roboBFF
+end
+alt if due diligence info is updated
+roboUI -> roboBFF: Updates Due Diligence Info
+activate roboBFF
+roboBFF -> profileService: Requests to update Due Diligence Info
+activate profileService
+profileService -> codeConnect: Calls updateDueDiligenceInfo API
+activate codeConnect
+codeConnect -> coreBanking: Updates data in CIS profile
+coreBanking --> codeConnect: Confirmation
+deactivate coreBanking
+deactivate codeConnect
+codeConnect --> profileService: Confirmation
+deactivate profileService
+profileService --> roboBFF: Confirmation
+deactivate roboBFF
+end
+end
+end
+
+== Step 3: Single Sign-On to MMM ==
+roboUI -> ciam: 5. Initiates SSO
+activate ciam
+ciam --> mmm: 6. Redirects Authenticated User with Identity
+deactivate ciam
+activate mmm
+
+== Step 4: MMM Calls Bank's APIs ==
+mmm -> apiGateway: 7. Calls Bank API for Pre-population (HTTPS)
+activate apiGateway
+apiGateway -> profileService: Routes to Customer Profile Service
+activate profileService
+profileService -> codeConnect: Fetches Customer Data
+activate codeConnect
+codeConnect -> coreBanking: Routes to Core Banking
+coreBanking --> codeConnect: Returns Data
+deactivate coreBanking
+deactivate codeConnect
+codeConnect --> profileService: Returns Data
+deactivate profileService
+profileService --> apiGateway: Returns Data
+deactivate apiGateway
+apiGateway --> mmm: Returns Customer Data
+mmm -> apiGateway: 8. Calls Bank API to Fetch Accounts (HTTPS)
+activate apiGateway
+apiGateway -> accountService: Routes to Account Service
+activate accountService
+accountService -> codeConnect: Fetches Account Data
+activate codeConnect
+codeConnect -> coreBanking: Routes to Core Banking
+coreBanking --> codeConnect: Returns Data
+deactivate coreBanking
+deactivate codeConnect
+codeConnect --> accountService: Returns Data
+deactivate accountService
+accountService --> apiGateway: Returns Data
+deactivate apiGateway
+apiGateway --> mmm: Returns Account Data
+mmm -> mmm: User completes account opening on MMM
+
+== Step 5: Account Opening on Pershing ==
+mmm -> pershing: 10. Stores RoboAdvisor Account (API Calls)
+activate pershing
+pershing --> mmm: Confirmation
+deactivate pershing
+
+@enduml
