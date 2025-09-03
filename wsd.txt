@@ -1,15 +1,20 @@
-2. Multi-Tenancy Architecture
+6.5. Backend API (BFF) Data Architecture (NEWLY ADDED SECTION):
+The BFF microservice utilizes a dual database strategy to manage its own state while interacting with the core tenant systems.
 
-The entire architecture is designed to be multi-tenant from the ground up.
+Private Micro DB: The BFF will have its own single, private database. This database is not for core customer data but for the BFF's operational needs, such as:
 
-2.1. Tenant Identification: The vendor's Online Banking (OLB) application is responsible for determining the user's brand context (e.g., "digital" or "general") at the time of login. This tenantId is the primary driver for all subsequent logic.
+Configuration: Storing tenant-specific feature flags, UI settings, or endpoint mappings.
 
-2.2. Impacted Areas: The tenantId influences:
+Caching: Caching non-sensitive, frequently accessed data to improve performance.
 
-Component Loading: Which version or configuration of a component is loaded.
+State Management: Handling state for multi-step operations.
 
-Component Behavior: The branding (styling) and features displayed to the user.
+All tables in this micro DB will be partitioned by a tenant_id column to keep its operational data segregated.
 
-API Authentication: The claims within the secure token, identifying the transaction's tenant context.
+Tenant-Specific Persistent DBs: The primary role of the BFF is to connect to the correct system of record for each tenant.
 
-Backend Logic: The scoping of all business logic and data access on the bank's backend.
+The tenant_id extracted from the validated JWT acts as a routing key.
+
+Based on this key, the BFF's internal logic will select the correct database connection string, credentials, and data access module for the specific tenant (e.g., the "Digital Bank DB" or the "General Bank DB").
+
+This ensures all core business operations are automatically and securely scoped to the correct tenant's data, providing strong data isolation.
