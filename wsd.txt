@@ -1,58 +1,15 @@
-title : Web Component Integration : Technical Approach
+2. Multi-Tenancy Architecture
 
-    participant User
-    participant VendorFrontend as Vendor App (Angular)
-    participant BankCDN as Bank's CDN / Server
-    participant VendorBackend as Vendor Backend
-    participant BankJWKS as Bank's JWKS URI
-    participant VendorJWKS as Vendor's JWKS URI
-    participant BankComponent as Bank Component (React)
-    participant BankBackend as Bank Backend API
+The entire architecture is designed to be multi-tenant from the ground up.
 
-    %% -- Phase 1: Initialization, Login & Component Loading --
-    Note over VendorFrontend, BankCDN: Phase 1: App Startup, Login & Component Loading
-    VendorFrontend->>+BankCDN: 1. Fetches manifest.json
-    BankCDN-->>-VendorFrontend: 2. Returns manifest.json content
-    VendorFrontend->>VendorFrontend: 3. Parses manifest and loads shared dependencies (React, etc.)
+2.1. Tenant Identification: The vendor's Online Banking (OLB) application is responsible for determining the user's brand context (e.g., "digital" or "general") at the time of login. This tenantId is the primary driver for all subsequent logic.
 
-    User->>+VendorFrontend: 4. Logs into Vendor App
-    VendorFrontend-->>-User: Login successful
+2.2. Impacted Areas: The tenantId influences:
 
-    User->>VendorFrontend: 5. Navigates to a page requiring a Bank Component
-    
-    VendorFrontend->>VendorFrontend: 6. Looks up specific component details in manifest
-    VendorFrontend->>+BankCDN: 7. Requests component JS/CSS bundles
-    BankCDN-->>-VendorFrontend: 8. Returns component bundles
-    VendorFrontend->>VendorFrontend: 9. Injects bundles, defining the custom element
+Component Loading: Which version or configuration of a component is loaded.
 
-    %% -- Phase 2: "Just-in-Time" Token Creation & Authenticated API Call --
-    Note over VendorFrontend, BankComponent: Phase 2: "Just-in-Time" Token Creation & API Call
-    VendorFrontend->>+VendorBackend: 10. Requests secure token for bank services
-    
-    VendorBackend->>+BankJWKS: 11. Fetches Bank's public encryption key
-    BankJWKS-->>-VendorBackend: 12. Returns public key
-    
-    Note over VendorBackend: Creates JWS (signs), then encrypts it to create JWE
-    VendorBackend->>VendorBackend: 13. Generates JWS, then JWE token
-    
-    VendorBackend-->>-VendorFrontend: 14. Returns Encrypted Token (JWE)
+Component Behavior: The branding (styling) and features displayed to the user.
 
-    Note over VendorFrontend, BankComponent: Vendor App now renders the component with the newly acquired token.
-    VendorFrontend->>BankComponent: 15. Renders Component with JWE prop
+API Authentication: The claims within the secure token, identifying the transaction's tenant context.
 
-    User->>BankComponent: 16. Submits an action (e.g., initiates wire transfer)
-    BankComponent->>+BankBackend: 17. Makes API call with JWE in Authorization header
-
-    BankBackend->>BankBackend: 18. Decrypts JWE with Bank's private key to get the original JWS
-    
-    BankBackend->>+VendorJWKS: 19. Fetches Vendor's public signing key
-    VendorJWKS-->>-BankBackend: 20. Returns public key
-    
-    BankBackend->>BankBackend: 21. Verifies JWS signature and validates claims (iss, aud, exp)
-
-    alt If Decryption & Verification are Successful
-        BankBackend->>BankBackend: 22. Processes the business logic
-        BankBackend-->>-BankComponent: 23. Returns API success response
-    else If Decryption or Verification Fails
-        BankBackend-->>-BankComponent: 23. Returns API error response (e.g., 401)
-    end
+Backend Logic: The scoping of all business logic and data access on the bank's backend.
