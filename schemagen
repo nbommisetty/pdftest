@@ -1,0 +1,50 @@
+<plugin>
+    <groupId>org.openapitools</groupId>
+    <artifactId>openapi-generator-maven-plugin</artifactId>
+    <version>${openapi-generator.version}</version>
+    <executions>
+        <execution>
+            <id>generate-users-api</id>
+            <goals>
+                <goal>generate</goal>
+            </goals>
+            <configuration>
+                <inputSpec>${project.basedir}/src/main/resources/api/users-api.json</inputSpec>
+                
+                <generatorName>spring</generatorName>
+                
+                <apiPackage>com.example.users.api</apiPackage>
+                <modelPackage>com.example.users.model</modelPackage>
+                
+                <configOptions>
+                    <sourceFolder>src/gen/java/main</sourceFolder>
+                    <interfaceOnly>true</interfaceOnly>
+                    <useBeanValidation>true</useBeanValidation>
+                    <dateLibrary>java8</dateLibrary>
+                </configOptions>
+            </configuration>
+        </execution>
+        
+        <execution>
+            <id>generate-products-api</id>
+            <goals>
+                <goal>generate</goal>
+            </goals>
+            <configuration>
+                <inputSpec>${project.basedir}/src/main/resources/api/products-api.json</inputSpec>
+                
+                <generatorName>spring</generatorName>
+                
+                <apiPackage>com.example.products.api</apiPackage>
+                <modelPackage>com.example.products.model</modelPackage>
+                
+                <configOptions>
+                    <sourceFolder>src/gen/java/main</sourceFolder>
+                    <interfaceOnly>true</interfaceOnly>
+                    <useBeanValidation>true</useBeanValidation>
+                    <dateLibrary>java8</dateLibrary>
+                </configOptions>
+            </configuration>
+        </execution>
+    </executions>
+</plugin>
