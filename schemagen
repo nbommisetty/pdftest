@@ -1,50 +1,156 @@
-<plugin>
-    <groupId>org.openapitools</groupId>
-    <artifactId>openapi-generator-maven-plugin</artifactId>
-    <version>${openapi-generator.version}</version>
-    <executions>
-        <execution>
-            <id>generate-users-api</id>
-            <goals>
-                <goal>generate</goal>
-            </goals>
-            <configuration>
-                <inputSpec>${project.basedir}/src/main/resources/api/users-api.json</inputSpec>
-                
-                <generatorName>spring</generatorName>
-                
-                <apiPackage>com.example.users.api</apiPackage>
-                <modelPackage>com.example.users.model</modelPackage>
-                
-                <configOptions>
-                    <sourceFolder>src/gen/java/main</sourceFolder>
-                    <interfaceOnly>true</interfaceOnly>
-                    <useBeanValidation>true</useBeanValidation>
-                    <dateLibrary>java8</dateLibrary>
-                </configOptions>
-            </configuration>
-        </execution>
-        
-        <execution>
-            <id>generate-products-api</id>
-            <goals>
-                <goal>generate</goal>
-            </goals>
-            <configuration>
-                <inputSpec>${project.basedir}/src/main/resources/api/products-api.json</inputSpec>
-                
-                <generatorName>spring</generatorName>
-                
-                <apiPackage>com.example.products.api</apiPackage>
-                <modelPackage>com.example.products.model</modelPackage>
-                
-                <configOptions>
-                    <sourceFolder>src/gen/java/main</sourceFolder>
-                    <interfaceOnly>true</interfaceOnly>
-                    <useBeanValidation>true</useBeanValidation>
-                    <dateLibrary>java8</dateLibrary>
-                </configOptions>
-            </configuration>
-        </execution>
-    </executions>
-</plugin>
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://example.com/schemas/Account.json",
+  "title": "Canonical Account Model",
+  "description": "A canonical model for a single financial account, aligned with FDX standards for data sharing and eligibility. Updated to reflect that some fields may not be available for external accounts.",
+  "fdx:compliance": "This schema is aligned with FDX 5.2 data models for Accounts and Balances.",
+  "fdx:scopes": [
+    "ACCOUNTS_BASIC",
+    "ACCOUNT_DETAILS"
+  ],
+  "type": "object",
+  "required": [
+    "accountId",
+    "accountType",
+    "status",
+    "currency",
+    "availableBalance",
+    "currentBalance",
+    "institutionInfo"
+  ],
+  "properties": {
+    "accountId": {
+      "type": "string",
+      "description": "A unique, immutable FDX-compliant identifier for the account, provided by the financial institution."
+    },
+    "accountType": {
+      "type": "string",
+      "enum": [
+        "CHECKING",
+        "SAVINGS",
+        "CREDIT_CARD",
+        "LINE_OF_CREDIT",
+        "LOAN",
+        "MORTGAGE",
+        "INVESTMENT",
+        "OTHER"
+      ],
+      "description": "The FDX standard type of the account, ensuring interoperability."
+    },
+    "accountName": {
+      "type": ["string", "null"],
+      "description": "A human-readable name or nickname for the account (e.g., 'My Checking'). Aligns with FDX 'accountName'."
+    },
+    "nickname": {
+      "type": ["string", "null"],
+      "description": "A user-defined nickname for the account. Part of the FDX specification."
+    },
+    "status": {
+      "type": "string",
+      "enum": ["ACTIVE", "CLOSED", "INACTIVE", "PENDING"],
+      "description": "The FDX standard status of the account."
+    },
+    "currency": {
+      "type": "string",
+      "pattern": "^[A-Z]{3}$",
+      "description": "ISO 4217 currency code of the account (e.g., 'USD', 'EUR'). Aligns with FDX."
+    },
+    "availableBalance": {
+      "type": "number",
+      "description": "The amount of money currently available for withdrawal or use. An FDX-compliant balance field."
+    },
+    "currentBalance": {
+      "type": "number",
+      "description": "The current balance of the account, including any pending transactions. An FDX-compliant balance field."
+    },
+    "balanceAsOfDate": {
+      "type": ["string", "null"],
+      "format": "date",
+      "description": "The date when the balance was last updated. Aligns with FDX."
+    },
+    "accountOpenDate": {
+      "type": ["string", "null"],
+      "format": "date",
+      "description": "The date when the account was opened. This is a common FDX data point, though it may not be available for all external accounts."
+    },
+    "accountOwnershipType": {
+      "type": ["string", "null"],
+      "enum": ["SOLE", "JOINT", "CORPORATE", "TRUST", "CUSTODIAL", "OTHER"],
+      "description": "The legal ownership type of the account, as specified in FDX data models. This may not be available for external accounts."
+    },
+    "isFundingEligible": {
+      "type": "boolean",
+      "description": "A business-logic flag to quickly determine if this account is eligible for funding a new account. This is a custom field for the business use case and is not part of FDX."
+    },
+    "institutionInfo": {
+      "$ref": "#/$defs/InstitutionInfo",
+      "description": "Information about the financial institution holding the account, aligning with FDX."
+    },
+    "linkedCustomerIds": {
+      "type": "array",
+      "description": "A list of customer IDs linked to this account, as an account can have multiple owners. This is an internal link and not an FDX data point."
+    },
+    "routingNumber": {
+      "type": ["string", "null"],
+      "description": "The ABA routing number for the account, if applicable. Aligns with FDX."
+    },
+    "maskedAccountNumber": {
+      "type": "string",
+      "description": "A masked or obfuscated account number for display purposes (e.g., '...1234'). Part of the FDX specification."
+    },
+    "links": {
+      "type": ["object", "null"],
+      "description": "Links to related API resources, as per HATEOAS principles. This is a common FDX API design pattern.",
+      "properties": {
+        "self": {
+          "type": "string",
+          "format": "uri"
+        }
+      }
+    }
+  },
+  "$defs": {
+    "InstitutionInfo": {
+      "type": "object",
+      "description": "Details about the financial institution.",
+      "required": ["institutionName"],
+      "properties": {
+        "institutionId": {
+          "type": ["string", "null"],
+          "description": "A unique FDX-compliant identifier for the financial institution. This is optional for external accounts."
+        },
+        "institutionName": {
+          "type": "string",
+          "description": "The name of the financial institution. Part of the FDX specification."
+        }
+      }
+    }
+  }
+}
+
+{
+  "accountId": "AC-123-456-7890",
+  "accountType": "CHECKING",
+  "accountName": "Primary Checking Account",
+  "nickname": "Daily Spending",
+  "status": "ACTIVE",
+  "currency": "USD",
+  "availableBalance": 500.50,
+  "currentBalance": 525.75,
+  "balanceAsOfDate": "2025-09-24",
+  "accountOpenDate": "2018-11-01",
+  "accountOwnershipType": "SOLE",
+  "isFundingEligible": true,
+  "institutionInfo": {
+    "institutionId": "FIN-001",
+    "institutionName": "First Trust Bank"
+  },
+  "linkedCustomerIds": [
+    "CUST-XYZ-7890"
+  ],
+  "routingNumber": "123456789",
+  "maskedAccountNumber": "...1234",
+  "links": {
+    "self": "https://api.example.com/accounts/AC-123-456-7890"
+  }
+}
