@@ -1,156 +1,127 @@
-{
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://example.com/schemas/Account.json",
-  "title": "Canonical Account Model",
-  "description": "A canonical model for a single financial account, aligned with FDX standards for data sharing and eligibility. Updated to reflect that some fields may not be available for external accounts.",
-  "fdx:compliance": "This schema is aligned with FDX 5.2 data models for Accounts and Balances.",
-  "fdx:scopes": [
-    "ACCOUNTS_BASIC",
-    "ACCOUNT_DETAILS"
-  ],
-  "type": "object",
-  "required": [
-    "accountId",
-    "accountType",
-    "status",
-    "currency",
-    "availableBalance",
-    "currentBalance",
-    "institutionInfo"
-  ],
-  "properties": {
-    "accountId": {
-      "type": "string",
-      "description": "A unique, immutable FDX-compliant identifier for the account, provided by the financial institution."
-    },
-    "accountType": {
-      "type": "string",
-      "enum": [
-        "CHECKING",
-        "SAVINGS",
-        "CREDIT_CARD",
-        "LINE_OF_CREDIT",
-        "LOAN",
-        "MORTGAGE",
-        "INVESTMENT",
-        "OTHER"
-      ],
-      "description": "The FDX standard type of the account, ensuring interoperability."
-    },
-    "accountName": {
-      "type": ["string", "null"],
-      "description": "A human-readable name or nickname for the account (e.g., 'My Checking'). Aligns with FDX 'accountName'."
-    },
-    "nickname": {
-      "type": ["string", "null"],
-      "description": "A user-defined nickname for the account. Part of the FDX specification."
-    },
-    "status": {
-      "type": "string",
-      "enum": ["ACTIVE", "CLOSED", "INACTIVE", "PENDING"],
-      "description": "The FDX standard status of the account."
-    },
-    "currency": {
-      "type": "string",
-      "pattern": "^[A-Z]{3}$",
-      "description": "ISO 4217 currency code of the account (e.g., 'USD', 'EUR'). Aligns with FDX."
-    },
-    "availableBalance": {
-      "type": "number",
-      "description": "The amount of money currently available for withdrawal or use. An FDX-compliant balance field."
-    },
-    "currentBalance": {
-      "type": "number",
-      "description": "The current balance of the account, including any pending transactions. An FDX-compliant balance field."
-    },
-    "balanceAsOfDate": {
-      "type": ["string", "null"],
-      "format": "date",
-      "description": "The date when the balance was last updated. Aligns with FDX."
-    },
-    "accountOpenDate": {
-      "type": ["string", "null"],
-      "format": "date",
-      "description": "The date when the account was opened. This is a common FDX data point, though it may not be available for all external accounts."
-    },
-    "accountOwnershipType": {
-      "type": ["string", "null"],
-      "enum": ["SOLE", "JOINT", "CORPORATE", "TRUST", "CUSTODIAL", "OTHER"],
-      "description": "The legal ownership type of the account, as specified in FDX data models. This may not be available for external accounts."
-    },
-    "isFundingEligible": {
-      "type": "boolean",
-      "description": "A business-logic flag to quickly determine if this account is eligible for funding a new account. This is a custom field for the business use case and is not part of FDX."
-    },
-    "institutionInfo": {
-      "$ref": "#/$defs/InstitutionInfo",
-      "description": "Information about the financial institution holding the account, aligning with FDX."
-    },
-    "linkedCustomerIds": {
-      "type": "array",
-      "description": "A list of customer IDs linked to this account, as an account can have multiple owners. This is an internal link and not an FDX data point."
-    },
-    "routingNumber": {
-      "type": ["string", "null"],
-      "description": "The ABA routing number for the account, if applicable. Aligns with FDX."
-    },
-    "maskedAccountNumber": {
-      "type": "string",
-      "description": "A masked or obfuscated account number for display purposes (e.g., '...1234'). Part of the FDX specification."
-    },
-    "links": {
-      "type": ["object", "null"],
-      "description": "Links to related API resources, as per HATEOAS principles. This is a common FDX API design pattern.",
-      "properties": {
-        "self": {
-          "type": "string",
-          "format": "uri"
-        }
-      }
+workspace "Customer Profile Verification" "Logical diagram for the Customer Profile Verification process within the Bank." {
+
+    !identifiers hierarchical
+
+    model {
+
+    // Persons
+    client = person "Customer" "Bank customer"
+
+    // External Software Systems
+    okta = softwareSystem "Okta Identity Platform" "External Identity and Access Management (IAM) service for authentication."
+    twilio = softwareSystem "Twilio" "External service for OTP delivery via SMS and Voice." {
+        tags "External"
     }
-  },
-  "$defs": {
-    "InstitutionInfo": {
-      "type": "object",
-      "description": "Details about the financial institution.",
-      "required": ["institutionName"],
-      "properties": {
-        "institutionId": {
-          "type": ["string", "null"],
-          "description": "A unique FDX-compliant identifier for the financial institution. This is optional for external accounts."
-        },
-        "institutionName": {
-          "type": "string",
-          "description": "The name of the financial institution. Part of the FDX specification."
-        }
-      }
+    
+    // Vendor-managed containers
+    core_banking = softwareSystem "Core Banking System" "Manages core customer and account data (Vendor Managed)." "Mainframe/Legacy System" {
+        tags "Vendor"
     }
-  }
+    codeconnect_gateway = softwareSystem "CodeConnect API Gateway" "Vendor-provided API gateway for core banking services." "API Gateway" {
+        tags "Vendor"
+    }
+    
+    // Bank's Applications (Vendor managed Software Systems)
+    online_banking = softwareSystem "Online Banking Application" "Web application for customer banking services (Q2/FIS)." {
+        tags "Vendor"
+    }
+    mobile_banking = softwareSystem "Mobile Banking Application" "Native mobile application for customer banking services (Q2/FIS)." {
+        tags "Vendor"
+    }
+
+    // 2. Define the main Bank's Systems software system and nest its internal containers directly
+    bank_systems = softwareSystem "Bank's Systems" "All systems within the Bank's enterprise." {
+
+        // Bank-managed containers
+        bank_api_gateway = container "Bank API Gateway" "Routes and secures API calls to internal bank services (Bank Managed)." "API Gateway" {
+            tags "Bank"
+        }
+        kyc_ui = container "Customer Profile KYC UI" "Bank-built web component for customer data verification (Bank Managed)." "Web Application" {
+            tags "Bank"
+        }
+        customer_profile_service = container "Customer Profile Service" "Provides customer demographic, contact, and employment information (Bank Managed)." "Microservice" {
+            tags "Bank"
+        }
+        alerts_service = container "Alerts Service" "Sends notifications to customers upon successful updates." "Microservice" {
+            tags "Bank"
+        }
+        dih_database = container "DIH Database" "Logs events related to customer updates." "Relational Database" {
+            tags "Bank"
+        }
+    }
+
+
+    // --- 3. Define all Relationships after all elements are declared ---
+    client -> online_banking "1. Uses" "HTTPS"
+    client -> mobile_banking "1. Uses" "IOS/Android"
+
+    online_banking -> okta "2. Authenticates User" "OpenID Connect"
+    mobile_banking -> okta "2. Authenticates User" "OpenID Connect/OAuth2"
+
+    online_banking -> bank_systems.kyc_ui "3. Launches (from dashboard banner or as Interstitial page)" "Web Component"
+    mobile_banking -> bank_systems.kyc_ui "3. Launches (from dashboard banner or as Interstitial page)" "Web Component/Webview"
+
+    bank_systems.kyc_ui -> bank_systems.customer_profile_service "4. Fetches/Updates Customer Data (Demographics, Contact, Employment)" "HTTPS/REST API via Bank API Gateway"
+    
+    bank_systems.customer_profile_service -> bank_systems.bank_api_gateway "4a. Sends/Validates OTP" "API Call"
+    bank_systems.bank_api_gateway -> twilio "4b. Sends/Validates OTP via SMS/Voice" "Twilio API"
+
+    bank_systems.customer_profile_service -> codeconnect_gateway "5. Fetches/Updates" "API Calls"
+    codeconnect_gateway -> core_banking "5a. Routes to Core Banking" "Internal API Calls"
+    bank_systems.customer_profile_service -> bank_systems.dih_database "5b. Logs Update Event" "Internal Database Call"
+
+    bank_systems.customer_profile_service -> bank_systems.bank_api_gateway "6. Syncs Contact Info and Updates MFA Factors" "Okta API"
+    bank_systems.bank_api_gateway -> okta "6a. Routes to Okta" "Okta API via Bank API Gateway"
+
+    bank_systems.customer_profile_service -> bank_systems.alerts_service "7. Sends Confirmation" "Internal API Call"
+    
 }
 
-{
-  "accountId": "AC-123-456-7890",
-  "accountType": "CHECKING",
-  "accountName": "Primary Checking Account",
-  "nickname": "Daily Spending",
-  "status": "ACTIVE",
-  "currency": "USD",
-  "availableBalance": 500.50,
-  "currentBalance": 525.75,
-  "balanceAsOfDate": "2025-09-24",
-  "accountOpenDate": "2018-11-01",
-  "accountOwnershipType": "SOLE",
-  "isFundingEligible": true,
-  "institutionInfo": {
-    "institutionId": "FIN-001",
-    "institutionName": "First Trust Bank"
-  },
-  "linkedCustomerIds": [
-    "CUST-XYZ-7890"
-  ],
-  "routingNumber": "123456789",
-  "maskedAccountNumber": "...1234",
-  "links": {
-    "self": "https://api.example.com/accounts/AC-123-456-7890"
-  }
+views {
+    systemContext bank_systems customer_verification "System Context Diagram for Customer Profile Verification." {
+        include *
+        include client
+        include twilio
+        include core_banking
+        include codeconnect_gateway
+        autoLayout
+    }
+    container bank_systems customer_verification_containers "Container Diagram for Customer Profile Verification." {
+        include *
+        include client
+        include twilio
+        include core_banking
+        include codeconnect_gateway
+        autoLayout
+    }
+
+    // Styles block moved inside the views block as per user's environment requirement
+    styles {
+        element "Vendor" {
+            background #90EE90
+            color #000000
+            shape Box
+        }
+        element "Bank" {
+            background #007bff
+            color #FFFFFF
+            shape Box
+        }
+        element "Person" {
+            shape Person
+            color #000080
+        }
+        element "Software System" {
+            background #E0E0E0
+            color #000000
+            shape Box
+        }
+        element "Software System Boundary" {
+            stroke #FF0000
+            strokeWidth 5
+            opacity 70
+        }
+    }
+}
+
 }
