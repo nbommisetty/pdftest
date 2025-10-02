@@ -1,127 +1,91 @@
-workspace "Customer Profile Verification" "Logical diagram for the Customer Profile Verification process within the Bank." {
+graph TD
+    subgraph Channels
+        C1[Customer Facing Web Portal]
+        C2[Customer Mobile App]
+        C3[Bank Associate Desktop App]
+        C4[Bank Associate Mobile App]
+    end
 
-    !identifiers hierarchical
+    subgraph Digital Extensions Platform
+        direction LR
+        subgraph Micro Frontends Layer
+            MFE1[Web Component Library]
+            MFE2[React Native Component Library]
+            MFE3[Orchestration Layer/Container]
+        end
 
-    model {
+        subgraph Microservices Layer
+            MS_BFF[API Gateway/BFF]
+            subgraph Individual Microservices
+                MS_A[Digital Extension Service A]
+                MS_B[Digital Extension Service B]
+                MS_N[...]
+            end
+        end
+    end
 
-    // Persons
-    client = person "Customer" "Bank customer"
+    subgraph Enterprise API Gateway
+        EAPIGW[Enterprise API Gateway]
+    end
 
-    // External Software Systems
-    okta = softwareSystem "Okta Identity Platform" "External Identity and Access Management (IAM) service for authentication."
-    twilio = softwareSystem "Twilio" "External service for OTP delivery via SMS and Voice." {
-        tags "External"
-    }
-    
-    // Vendor-managed containers
-    core_banking = softwareSystem "Core Banking System" "Manages core customer and account data (Vendor Managed)." "Mainframe/Legacy System" {
-        tags "Vendor"
-    }
-    codeconnect_gateway = softwareSystem "CodeConnect API Gateway" "Vendor-provided API gateway for core banking services." "API Gateway" {
-        tags "Vendor"
-    }
-    
-    // Bank's Applications (Vendor managed Software Systems)
-    online_banking = softwareSystem "Online Banking Application" "Web application for customer banking services (Q2/FIS)." {
-        tags "Vendor"
-    }
-    mobile_banking = softwareSystem "Mobile Banking Application" "Native mobile application for customer banking services (Q2/FIS)." {
-        tags "Vendor"
-    }
+    subgraph Companion Systems & External Integrations
+        CS[OKTA, Twilio, ThreatMetrix, Marstone, etc.]
+    end
 
-    // 2. Define the main Bank's Systems software system and nest its internal containers directly
-    bank_systems = softwareSystem "Bank's Systems" "All systems within the Bank's enterprise." {
+    subgraph Core Banking Systems
+        CBS[Core Banking APIs/Databases]
+    end
 
-        // Bank-managed containers
-        bank_api_gateway = container "Bank API Gateway" "Routes and secures API calls to internal bank services (Bank Managed)." "API Gateway" {
-            tags "Bank"
-        }
-        kyc_ui = container "Customer Profile KYC UI" "Bank-built web component for customer data verification (Bank Managed)." "Web Application" {
-            tags "Bank"
-        }
-        customer_profile_service = container "Customer Profile Service" "Provides customer demographic, contact, and employment information (Bank Managed)." "Microservice" {
-            tags "Bank"
-        }
-        alerts_service = container "Alerts Service" "Sends notifications to customers upon successful updates." "Microservice" {
-            tags "Bank"
-        }
-        dih_database = container "DIH Database" "Logs events related to customer updates." "Relational Database" {
-            tags "Bank"
-        }
-    }
+    subgraph Data Stores
+        DS[Micro-databases, Analytics DB, Datalake, etc.]
+    end
 
+    C1 --> MFE3
+    C2 --> MFE3
+    C3 --> MFE3
+    C4 --> MFE3
 
-    // --- 3. Define all Relationships after all elements are declared ---
-    client -> online_banking "1. Uses" "HTTPS"
-    client -> mobile_banking "1. Uses" "IOS/Android"
+    MFE3 --> MFE1
+    MFE3 --> MFE2
 
-    online_banking -> okta "2. Authenticates User" "OpenID Connect"
-    mobile_banking -> okta "2. Authenticates User" "OpenID Connect/OAuth2"
+    MFE1 --> MS_BFF
+    MFE2 --> MS_BFF
 
-    online_banking -> bank_systems.kyc_ui "3. Launches (from dashboard banner or as Interstitial page)" "Web Component"
-    mobile_banking -> bank_systems.kyc_ui "3. Launches (from dashboard banner or as Interstitial page)" "Web Component/Webview"
+    MS_BFF --> MS_A
+    MS_BFF --> MS_B
+    MS_BFF --> MS_N
 
-    bank_systems.kyc_ui -> bank_systems.customer_profile_service "4. Fetches/Updates Customer Data (Demographics, Contact, Employment)" "HTTPS/REST API via Bank API Gateway"
-    
-    bank_systems.customer_profile_service -> bank_systems.bank_api_gateway "4a. Sends/Validates OTP" "API Call"
-    bank_systems.bank_api_gateway -> twilio "4b. Sends/Validates OTP via SMS/Voice" "Twilio API"
+    MS_A --> CBS
+    MS_B --> CBS
+    MS_N --> CBS
 
-    bank_systems.customer_profile_service -> codeconnect_gateway "5. Fetches/Updates" "API Calls"
-    codeconnect_gateway -> core_banking "5a. Routes to Core Banking" "Internal API Calls"
-    bank_systems.customer_profile_service -> bank_systems.dih_database "5b. Logs Update Event" "Internal Database Call"
+    MS_A --> DS
+    MS_B --> DS
+    MS_N --> DS
 
-    bank_systems.customer_profile_service -> bank_systems.bank_api_gateway "6. Syncs Contact Info and Updates MFA Factors" "Okta API"
-    bank_systems.bank_api_gateway -> okta "6a. Routes to Okta" "Okta API via Bank API Gateway"
+    MS_A --> EAPIGW
+    MS_B --> EAPIGW
+    MS_N --> EAPIGW
 
-    bank_systems.customer_profile_service -> bank_systems.alerts_service "7. Sends Confirmation" "Internal API Call"
-    
-}
+    EAPIGW --> CS
 
-views {
-    systemContext bank_systems customer_verification "System Context Diagram for Customer Profile Verification." {
-        include *
-        include client
-        include twilio
-        include core_banking
-        include codeconnect_gateway
-        autoLayout
-    }
-    container bank_systems customer_verification_containers "Container Diagram for Customer Profile Verification." {
-        include *
-        include client
-        include twilio
-        include core_banking
-        include codeconnect_gateway
-        autoLayout
-    }
+    style C1 fill:#f9f,stroke:#333,stroke-width:2px
+    style C2 fill:#f9f,stroke:#333,stroke-width:2px
+    style C3 fill:#f9f,stroke:#333,stroke-width:2px
+    style C4 fill:#f9f,stroke:#333,stroke-width:2px
 
-    // Styles block moved inside the views block as per user's environment requirement
-    styles {
-        element "Vendor" {
-            background #90EE90
-            color #000000
-            shape Box
-        }
-        element "Bank" {
-            background #007bff
-            color #FFFFFF
-            shape Box
-        }
-        element "Person" {
-            shape Person
-            color #000080
-        }
-        element "Software System" {
-            background #E0E0E0
-            color #000000
-            shape Box
-        }
-        element "Software System Boundary" {
-            stroke #FF0000
-            strokeWidth 5
-            opacity 70
-        }
-    }
-}
+    style MFE1 fill:#bbf,stroke:#333,stroke-width:2px
+    style MFE2 fill:#bbf,stroke:#333,stroke-width:2px
+    style MFE3 fill:#bbf,stroke:#333,stroke-width:2px
 
-}
+    style MS_BFF fill:#bfb,stroke:#333,stroke-width:2px
+    style MS_A fill:#bfb,stroke:#333,stroke-width:2px
+    style MS_B fill:#bfb,stroke:#333,stroke-width:2px
+    style MS_N fill:#bfb,stroke:#333,stroke-width:2px
+
+    style EAPIGW fill:#f0c,stroke:#333,stroke-width:2px
+
+    style CS fill:#ffc,stroke:#333,stroke-width:2px
+
+    style CBS fill:#eee,stroke:#333,stroke-width:2px
+    style DS fill:#cce,stroke:#333,stroke-width:2px
