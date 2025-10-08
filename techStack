@@ -1,0 +1,22 @@
+Frontend (Web & Mobile)
+Category	Technology Stack	Rationale
+Development Language	JavaScript / TypeScript	Single language for maximum code reuse across web and mobile.
+Web Host / Micro-Frontends	ReactJS, Web Components (Custom Elements)	Modern, component-based UI; Strong encapsulation and interoperability for micro-frontends.
+Mobile Host / Micro-Apps	React Native (with Hermes & New Architecture)	Native UX/performance on iOS/Android; Addresses past performance concerns; Unified developer experience.
+Micro-Frontend Orchestration	Module Federation (Webpack 5 / Rspack)	Enables dynamic runtime code sharing, dependency deduplication, and independent deployment of features.
+Mobile Module Bundling	Re.Pack	Replaces Metro to bring Webpack 5's Module Federation capabilities to React Native.
+Shared Code	Monorepo Structure: platform-core & design-system packages	Maximizes reuse of business logic, API clients, state management, and design tokens across platforms.
+Deployment & Ops	Zephyr Cloud (BYOC Model)	Dedicated platform for Module Federation; Provides instant rollbacks, versioning, and live environment composition within the bank's secure cloud.
+
+
+Backend & Infrastructure
+Category	Technology Stack	Rationale
+Backend Framework	Spring Boot	Robust, widely adopted, and enterprise-grade framework for building scalable microservices.
+API Architecture	RESTful APIs / Event-Driven (e.g., Kafka)	Standardized and scalable communication for microservices; Supports asynchronous event processing.
+Containerization	Docker	Standard for packaging microservices for consistent deployment across environments.
+Container Orchestration	Red Hat OpenShift Container Platform	Enterprise-grade Kubernetes platform for deploying, scaling, and managing backend microservices securely.
+Database	(To be determined based on specific service needs, e.g., PostgreSQL, Oracle, MongoDB)	Flexible choice based on data consistency, performance, and scalability requirements for each microservice.
+CI/CD	GitLab CI/CD (or equivalent)	Automates build, test, and deployment pipelines across frontend and backend, integrating with Zephyr Cloud and OpenShift.
+Monitoring & Logging	Splunk, Dynatrace, Tealeaf	Enterprise-grade solutions for centralized logging, application performance monitoring (APM), and user experience analytics.
+
+
