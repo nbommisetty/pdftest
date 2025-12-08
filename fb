@@ -1,0 +1,9 @@
+some observations regarding the recent transition to the offline ARG review process. While I understand the intent was likely to reduce meeting overhead, we are seeing a significant impact on our "Permit to Develop" timeline.
+
+For our most recent project, the cycle time from Architecture Forum presentation to final approval was 2.5 months. Under the previous live-meeting model, this was significantly faster.
+
+We’ve identified two main bottlenecks in the offline workflow:
+
+coordination Overhead: Without a scheduled forum, our team spends considerable time manually chasing representatives from all five domains (EA, DA, SA, Security, Infra) for individual sign-offs.
+
+Domain Misalignment: We encountered conflicting feedback between different architectural groups. In a live meeting, these contradictions are usually resolved in real-time by the architects debating and agreeing. In the offline mode, we act as the middleman, bouncing back and forth to resolve the conflicts.
