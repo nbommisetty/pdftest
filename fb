@@ -3,26 +3,26 @@ sequenceDiagram
     actor User
     participant MobileApp as Bank Native App
     participant Backend as DES SAML Bridge (Pseudo-IdP)
-    participant Okta as Okta (CIAM)
+    participant OOOO as OOOO (CIAM)
     box "Embedded WebView Context" #f0f7ff
     participant WebView as WebView Browser
     participant MarstoneApp as Marstone App (Service Provider)
     end
     participant Auth0 as Marstone Auth0 Tenant
 
-    note over User, Backend: Prerequisites: User has valid Access Token from Okta
+    note over User, Backend: Prerequisites: User has valid Access Token from OOOO
 
     User->>MobileApp: Taps "Open Marstone"
 
     rect rgb(240, 240, 240)
     note right of MobileApp: Phase 1: The SAML Bridge (Bootstrapping Session)
-    MobileApp->>Backend: Request Launch Bridge (sends Okta Access Token)
+    MobileApp->>Backend: Request Launch Bridge (sends OOOO Access Token)
     
-    %% NEW STEP: OKTA VALIDATION
-    Backend->>Okta: API Call: /introspect (Validate Token)
-    Okta-->>Backend: Token Active (User: "john.doe@email.com")
+    %% NEW STEP: OOOO VALIDATION
+    Backend->>OOOO: API Call: /introspect (Validate Token)
+    OOOO-->>Backend: Token Active (User: "john.doe@email.com")
     
-    note right of Backend: 1. Token Validated by Okta<br/>2. Backend generates SAML Response<br/>3. Sign with Bank Private Key
+    note right of Backend: 1. Token Validated by OOOO<br/>2. Backend generates SAML Response<br/>3. Sign with Bank Private Key
     Backend-->>MobileApp: Return HTML "Auto-Submit" Form (w/ SAMLResponse)
     MobileApp->>WebView: Load HTML Form
     WebView->>Auth0: POST /login/callback?connection=Bank-Bridge<br/>(SAMLResponse)
@@ -39,7 +39,7 @@ sequenceDiagram
     Auth0-->>MarstoneApp: Redirect w/ Auth Code
     MarstoneApp->>Auth0: POST /oauth/token
     
-    %% OPTIONAL: AUTH0 CAN VALIDATE WITH OKTA AGAIN IF FEDERATED
+    %% OPTIONAL: AUTH0 CAN VALIDATE WITH OOOO AGAIN IF FEDERATED
     %% BUT TYPICALLY STOPS HERE FOR BRIDGE FLOW
     
     Auth0-->>MarstoneApp: Return ID Token & Access Token
