@@ -1,41 +1,19 @@
-Hello Support Team,
+Subject: Marketo API Edge Case / Request for Dedicated Support Contact
 
-I am writing to report a concurrency issue we are experiencing with the Marketo REST API, specifically the syncLeads endpoint, which is resulting in data corruption (duplicate leads).
+Hi [Her Name],
 
-The Scenario We use an external webhook provider (ClickSwitch) that occasionally sends us two status update events for the same user at the exact same timestamp. Our service processes these events and immediately calls the syncLeads API to update the corresponding lead in Marketo.
+I hope you’re doing well.
 
-The Issue Despite setting the API action to createOrUpdate and providing a strict unique lookup key, the API fails to handle these concurrent requests correctly.
+I am reaching out regarding a tricky technical issue we are encountering with the Marketo syncLeads API on the [Project Name/Direct Deposit] project.
 
-Two requests hit the Marketo API at nearly the same millisecond.
+We have hit a "race condition" where simultaneous webhooks are causing Marketo to create duplicate leads, even though we are using the standard deduplication settings. This is currently blocking our ability to reliably update customer records in real-time.
 
-Both requests seemingly pass the "check" phase (seeing that the lead does not exist).
+Before I toss this into the general Marketo/Adobe support queue—where complex API concurrency issues often get stuck—I wanted to ask:
 
-Both requests proceed to "create," resulting in two distinct leads with the exact same Unique ID.
+Do you have a direct point of contact (like a CSM or Technical Account Manager) at Marketo?
 
-The Impact Because duplicate leads now exist sharing the same Unique ID, all subsequent API calls for this customer fail with the error: 1013: Multiple lead match lookup criteria error
+If so, I would love to copy them on the ticket or have you perform an intro. I have a detailed technical write-up of the root cause ready to go; I just want to ensure it gets in front of the right engineer quickly.
 
-Request for Assistance We understand that distributed systems have eventual consistency challenges, but createOrUpdate implies an atomic operation or a unique constraint check.
+Thanks,
 
-Root Cause: Can you confirm if the syncLeads endpoint lacks database-level unique constraint enforcement for custom lookup fields during high-concurrency bursts?
-
-Data Fix: We have specific leads that are now "broken" due to this duplication. Can you please merge the following duplicates or advise on how we can delete one of them given that API calls by ID are failing?
-
-Incident Details
-
-Endpoint Used: /rest/v1/leads.json
-
-Method: POST
-
-Action Parameter: createOrUpdate
-
-Lookup Field: [Insert Field Name, e.g., email or custom_id]
-
-Timestamp: [Insert Timestamp]
-
-Duplicate Lead IDs: [Lead ID #1] and [Lead ID #2]
-
-We are implementing internal serialization to mitigate this, but we need these specific records fixed to resume processing for this client.
-
-Regards,
-
-[Your Name] Technical Lead [Your Company Name]
+[Your Name] Technical Lead
