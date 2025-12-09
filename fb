@@ -1,9 +1,41 @@
-some observations regarding the recent transition to the offline ARG review process. While I understand the intent was likely to reduce meeting overhead, we are seeing a significant impact on our "Permit to Develop" timeline.
+Hello Support Team,
 
-For our most recent project, the cycle time from Architecture Forum presentation to final approval was 2.5 months. Under the previous live-meeting model, this was significantly faster.
+I am writing to report a concurrency issue we are experiencing with the Marketo REST API, specifically the syncLeads endpoint, which is resulting in data corruption (duplicate leads).
 
-We’ve identified two main bottlenecks in the offline workflow:
+The Scenario We use an external webhook provider (ClickSwitch) that occasionally sends us two status update events for the same user at the exact same timestamp. Our service processes these events and immediately calls the syncLeads API to update the corresponding lead in Marketo.
 
-coordination Overhead: Without a scheduled forum, our team spends considerable time manually chasing representatives from all five domains (EA, DA, SA, Security, Infra) for individual sign-offs.
+The Issue Despite setting the API action to createOrUpdate and providing a strict unique lookup key, the API fails to handle these concurrent requests correctly.
 
-Domain Misalignment: We encountered conflicting feedback between different architectural groups. In a live meeting, these contradictions are usually resolved in real-time by the architects debating and agreeing. In the offline mode, we act as the middleman, bouncing back and forth to resolve the conflicts.
+Two requests hit the Marketo API at nearly the same millisecond.
+
+Both requests seemingly pass the "check" phase (seeing that the lead does not exist).
+
+Both requests proceed to "create," resulting in two distinct leads with the exact same Unique ID.
+
+The Impact Because duplicate leads now exist sharing the same Unique ID, all subsequent API calls for this customer fail with the error: 1013: Multiple lead match lookup criteria error
+
+Request for Assistance We understand that distributed systems have eventual consistency challenges, but createOrUpdate implies an atomic operation or a unique constraint check.
+
+Root Cause: Can you confirm if the syncLeads endpoint lacks database-level unique constraint enforcement for custom lookup fields during high-concurrency bursts?
+
+Data Fix: We have specific leads that are now "broken" due to this duplication. Can you please merge the following duplicates or advise on how we can delete one of them given that API calls by ID are failing?
+
+Incident Details
+
+Endpoint Used: /rest/v1/leads.json
+
+Method: POST
+
+Action Parameter: createOrUpdate
+
+Lookup Field: [Insert Field Name, e.g., email or custom_id]
+
+Timestamp: [Insert Timestamp]
+
+Duplicate Lead IDs: [Lead ID #1] and [Lead ID #2]
+
+We are implementing internal serialization to mitigate this, but we need these specific records fixed to resume processing for this client.
+
+Regards,
+
+[Your Name] Technical Lead [Your Company Name]
