@@ -1,19 +1,48 @@
-Subject: Marketo API Edge Case / Request for Dedicated Support Contact
+sequenceDiagram
+    autonumber
+    actor User
+    participant MobileApp as Bank Native App
+    participant Backend as DES SAML Bridge (Pseudo-IdP)
+    participant Okta as Okta (CIAM)
+    box "Embedded WebView Context" #f0f7ff
+    participant WebView as WebView Browser
+    participant MarstoneApp as Marstone App (Service Provider)
+    end
+    participant Auth0 as Marstone Auth0 Tenant
 
-Hi [Her Name],
+    note over User, Backend: Prerequisites: User has valid Access Token from Okta
 
-I hope you’re doing well.
+    User->>MobileApp: Taps "Open Marstone"
 
-I am reaching out regarding a tricky technical issue we are encountering with the Marketo syncLeads API on the [Project Name/Direct Deposit] project.
+    rect rgb(240, 240, 240)
+    note right of MobileApp: Phase 1: The SAML Bridge (Bootstrapping Session)
+    MobileApp->>Backend: Request Launch Bridge (sends Okta Access Token)
+    
+    %% NEW STEP: OKTA VALIDATION
+    Backend->>Okta: API Call: /introspect (Validate Token)
+    Okta-->>Backend: Token Active (User: "john.doe@email.com")
+    
+    note right of Backend: 1. Token Validated by Okta<br/>2. Backend generates SAML Response<br/>3. Sign with Bank Private Key
+    Backend-->>MobileApp: Return HTML "Auto-Submit" Form (w/ SAMLResponse)
+    MobileApp->>WebView: Load HTML Form
+    WebView->>Auth0: POST /login/callback?connection=Bank-Bridge<br/>(SAMLResponse)
+    
+    note left of Auth0: 1. Auth0 validates Bank Signature<br/>2. Creates Auth0 Session
+    Auth0-->>WebView: 302 Redirect to Marstone App
+    end
 
-We have hit a "race condition" where simultaneous webhooks are causing Marketo to create duplicate leads, even though we are using the standard deduplication settings. This is currently blocking our ability to reliably update customer records in real-time.
+    rect rgb(230, 255, 230)
+    note right of MobileApp: Phase 2: Standard Marstone OIDC Flow
+    WebView->>MarstoneApp: Load Application URL
+    MarstoneApp->>Auth0: OIDC GET /authorizeRequest
+    note left of Auth0: Auth0 sees active session.<br/>Skips Login.
+    Auth0-->>MarstoneApp: Redirect w/ Auth Code
+    MarstoneApp->>Auth0: POST /oauth/token
+    
+    %% OPTIONAL: AUTH0 CAN VALIDATE WITH OKTA AGAIN IF FEDERATED
+    %% BUT TYPICALLY STOPS HERE FOR BRIDGE FLOW
+    
+    Auth0-->>MarstoneApp: Return ID Token & Access Token
+    end
 
-Before I toss this into the general Marketo/Adobe support queue—where complex API concurrency issues often get stuck—I wanted to ask:
-
-Do you have a direct point of contact (like a CSM or Technical Account Manager) at Marketo?
-
-If so, I would love to copy them on the ticket or have you perform an intro. I have a detailed technical write-up of the root cause ready to go; I just want to ensure it gets in front of the right engineer quickly.
-
-Thanks,
-
-[Your Name] Technical Lead
+    MarstoneApp->>WebView: Render Dashboard
