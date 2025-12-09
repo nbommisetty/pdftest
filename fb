@@ -1,48 +1,38 @@
-sequenceDiagram
-    autonumber
-    actor User
-    participant MobileApp as Bank Native App
-    participant Backend as DES SAML Bridge (Pseudo-IdP)
-    participant OOOO as OOOO (CIAM)
-    box "Embedded WebView Context" #f0f7ff
-    participant WebView as WebView Browser
-    participant MarstoneApp as Marstone App (Service Provider)
-    end
-    participant Auth0 as Marstone Auth0 Tenant
+Vendor Requirements Checklist
+To enable this flow, we request the following configuration on the Marstone Auth0 Tenant:
 
-    note over User, Backend: Prerequisites: User has valid Access Token from OOOO
+Create a new Enterprise SAML Connection.
 
-    User->>MobileApp: Taps "Open Marstone"
+Connection Name: (e.g., Bank-Mobile-Bridge)
 
-    rect rgb(240, 240, 240)
-    note right of MobileApp: Phase 1: The SAML Bridge (Bootstrapping Session)
-    MobileApp->>Backend: Request Launch Bridge (sends OOOO Access Token)
-    
-    %% NEW STEP: OOOO VALIDATION
-    Backend->>OOOO: API Call: /introspect (Validate Token)
-    OOOO-->>Backend: Token Active (User: "john.doe@email.com")
-    
-    note right of Backend: 1. Token Validated by OOOO<br/>2. Backend generates SAML Response<br/>3. Sign with Bank Private Key
-    Backend-->>MobileApp: Return HTML "Auto-Submit" Form (w/ SAMLResponse)
-    MobileApp->>WebView: Load HTML Form
-    WebView->>Auth0: POST /login/callback?connection=Bank-Bridge<br/>(SAMLResponse)
-    
-    note left of Auth0: 1. Auth0 validates Bank Signature<br/>2. Creates Auth0 Session
-    Auth0-->>WebView: 302 Redirect to Marstone App
-    end
+Configure the Connection:
 
-    rect rgb(230, 255, 230)
-    note right of MobileApp: Phase 2: Standard Marstone OIDC Flow
-    WebView->>MarstoneApp: Load Application URL
-    MarstoneApp->>Auth0: OIDC GET /authorizeRequest
-    note left of Auth0: Auth0 sees active session.<br/>Skips Login.
-    Auth0-->>MarstoneApp: Redirect w/ Auth Code
-    MarstoneApp->>Auth0: POST /oauth/token
-    
-    %% OPTIONAL: AUTH0 CAN VALIDATE WITH OOOO AGAIN IF FEDERATED
-    %% BUT TYPICALLY STOPS HERE FOR BRIDGE FLOW
-    
-    Auth0-->>MarstoneApp: Return ID Token & Access Token
-    end
+Upload the Bank's Public Certificate (we will provide this .pem file).
 
-    MarstoneApp->>WebView: Render Dashboard
+Set the "Sign In URL" to a placeholder value (it is not used in IdP-initiated flows like this one).
+
+Enable the Connection for the Marstone Client:
+
+Ensure this new SAML connection is enabled for the specific Auth0 Application (Client ID) that the Marstone Web App uses.
+
+
+
+-----
+
+This diagram illustrates how the Bank's backend acts as a temporary Identity Provider to establish the Auth0 session, allowing the standard Marstone OIDC flow to complete silently.
+
+-----
+
+Proposal for Marstone: Seamless Mobile SSO via "SAML Bridge"
+Executive Summary for Vendor
+To ensure a seamless, secure user experience when transitioning from the Bank's native mobile app to the Marstone WebView integration, we propose a "SAML Bridge" approach.
+
+This approach leverages your existing Auth0 infrastructure as an Identity Broker. It allows the Bank's backend to securely "vouch" for the user's identity, establishing a session in Auth0 without requiring a password prompt.
+
+Key Benefits for Marstone:
+
+Zero Application Code Changes: The Marstone web application continues to use its standard OIDC Authorization Code flow. It is unaware that SAML was used to bootstrap the session.
+
+Standard Auth0 Configuration: The only requirement on the Marstone side is adding a standard SAML Enterprise Connection in the Auth0 dashboard.
+
+Secure & Trusted: The flow relies on industry-standard PKI cryptography (signing a SAML assertion with a private key held by the Bank).
