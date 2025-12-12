@@ -1,38 +1,31 @@
-Vendor Requirements Checklist
-To enable this flow, we request the following configuration on the Marstone Auth0 Tenant:
+Subject: Configuration Request: Reserve User-Defined Fields in Bank Control #650 (KYC & Wealth Integration)
 
-Create a new Enterprise SAML Connection.
+Hi [Name or Team Name],
 
-Connection Name: (e.g., Bank-Mobile-Bridge)
+We are currently designing the Customer Profile Verification / KYC Digital Extension, where we will capture customer income and frequency data.
 
-Configure the Connection:
+Based on recent discussions with our IBS consultant, Bank Control #650 (Customer Due Diligence) was recommended as the standard location to house these custom attributes.
 
-Upload the Bank's Public Certificate (we will provide this .pem file).
+We would like to request the reservation of two unused User-Defined Fields within BC #650 to store this data. This request supports two critical initiatives:
 
-Set the "Sign In URL" to a placeholder value (it is not used in IdP-initiated flows like this one).
+Wealth Account Opening (Marstone Project): These fields are required to prefill employment/income data during the wealth account application process, which is an active project deliverable.
 
-Enable the Connection for the Marstone Client:
+Cross-Sell Opportunities: Enabling downstream logic for future marketing and product offers based on customer income profiles.
 
-Ensure this new SAML connection is enabled for the specific Auth0 Application (Client ID) that the Marstone Web App uses.
+Request Details:
 
+Target Record: IBS Bank Control #650 (Customer Due Diligence)
 
+Data to Capture:
 
------
+Income Amount (Requires a numeric/amount field)
 
-This diagram illustrates how the Bank's backend acts as a temporary Identity Provider to establish the Auth0 session, allowing the standard Marstone OIDC flow to complete silently.
+Income Frequency (e.g., Monthly, Annually – alphanumeric/code)
 
------
+Could you please review the available user-defined fields in BC #650 and assign two specific fields for this use case?
 
-Proposal for Marstone: Seamless Mobile SSO via "SAML Bridge"
-Executive Summary for Vendor
-To ensure a seamless, secure user experience when transitioning from the Bank's native mobile app to the Marstone WebView integration, we propose a "SAML Bridge" approach.
+Action Item: If your team handles Bank Control configurations, please confirm the Field IDs/Names and their Data Formats once assigned. If this request falls outside your team's scope, could you please route this to the appropriate IBS configuration team or let me know whom I should contact?
 
-This approach leverages your existing Auth0 infrastructure as an Identity Broker. It allows the Bank's backend to securely "vouch" for the user's identity, establishing a session in Auth0 without requiring a password prompt.
+Thanks,
 
-Key Benefits for Marstone:
-
-Zero Application Code Changes: The Marstone web application continues to use its standard OIDC Authorization Code flow. It is unaware that SAML was used to bootstrap the session.
-
-Standard Auth0 Configuration: The only requirement on the Marstone side is adding a standard SAML Enterprise Connection in the Auth0 dashboard.
-
-Secure & Trusted: The flow relies on industry-standard PKI cryptography (signing a SAML assertion with a private key held by the Bank).
+[Your Name]
