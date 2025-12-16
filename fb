@@ -1,31 +1,50 @@
-Subject: Configuration Request: Reserve User-Defined Fields in Bank Control #650 (KYC & Wealth Integration)
+sequenceDiagram
+    autonumber
+    actor User
+    
+    box "Mobile Device Context" #f9f9f9
+        participant NativeApp as Native Mobile App<br/>(Dashboard & Shell)
+        participant WebComp as Robo Web Component<br/>(Hosted in Rancher SCP)
+        participant MarstoneWebView as Marstone WebView<br/>(New Container)
+    end
+    
+    participant MobileBackend as Mobile App Backend
+    participant PseudoIdP as Bank Pseudo-IdP<br/>(Internal Only)
+    participant OKKK as OKKK (CIAM)
+    participant Auth0 as Marstone Auth0
 
-Hi [Name or Team Name],
+    note over User, NativeApp: User is logged in and viewing Mobile Dashboard
 
-We are currently designing the Customer Profile Verification / KYC Digital Extension, where we will capture customer income and frequency data.
-
-Based on recent discussions with our IBS consultant, Bank Control #650 (Customer Due Diligence) was recommended as the standard location to house these custom attributes.
-
-We would like to request the reservation of two unused User-Defined Fields within BC #650 to store this data. This request supports two critical initiatives:
-
-Wealth Account Opening (Marstone Project): These fields are required to prefill employment/income data during the wealth account application process, which is an active project deliverable.
-
-Cross-Sell Opportunities: Enabling downstream logic for future marketing and product offers based on customer income profiles.
-
-Request Details:
-
-Target Record: IBS Bank Control #650 (Customer Due Diligence)
-
-Data to Capture:
-
-Income Amount (Requires a numeric/amount field)
-
-Income Frequency (e.g., Monthly, Annually – alphanumeric/code)
-
-Could you please review the available user-defined fields in BC #650 and assign two specific fields for this use case?
-
-Action Item: If your team handles Bank Control configurations, please confirm the Field IDs/Names and their Data Formats once assigned. If this request falls outside your team's scope, could you please route this to the appropriate IBS configuration team or let me know whom I should contact?
-
-Thanks,
-
-[Your Name]
+    User->>NativeApp: 1. Clicks "Robo-Advisory" Banner
+    
+    note right of NativeApp: App navigates to Robo feature.
+    NativeApp->>WebComp: 2. Load "Robo Web Component"
+    
+    User->>WebComp: 3. Verify Customer Info (Review Screen)
+    User->>WebComp: 4. Clicks "Launch Marstone" Button
+    
+    note left of WebComp: Component signals intent via JS Bridge.
+    WebComp-->>NativeApp: 5. Send Message: {action: "launch_marstone"}
+    
+    note right of NativeApp: Native Shell receives signal.<br/>Initiates secure backend flow.
+    NativeApp->>MobileBackend: 6. Request Launch (w/ OKKK Access Token)
+    
+    note right of MobileBackend: Security Boundary:<br/>Validates Mobile App request.
+    MobileBackend->>PseudoIdP: 7. Forward Request (Whitelisted Internal IP)
+    
+    PseudoIdP->>OKKK: 8. API Call: /introspect (Validate Token)
+    OKKK-->>PseudoIdP: 9. Token Valid (User Verified)
+    
+    note right of PseudoIdP: 10. Generate & Sign SAML Response.
+    PseudoIdP-->>MobileBackend: Return HTML "Auto-Submit" Form
+    MobileBackend-->>NativeApp: Return HTML Form
+    
+    note right of NativeApp: 11. Initialize NEW WebView.<br/>Robo Component remains active.
+    NativeApp->>MarstoneWebView: 12. Load HTML Form into Marstone WebView
+    
+    MarstoneWebView->>Auth0: 13. POST /login/callback (SAMLResponse)
+    note left of Auth0: 14. Auth0 Validates Signature & Creates Session.
+    Auth0-->>MarstoneWebView: 15. Redirect to Marstone URL
+    
+    MarstoneWebView->>MarstoneWebView: 16. Load Marstone App (Auto-Login via OIDC)
+    MarstoneWebView-->>User: 17. User sees Marstone Dashboard
