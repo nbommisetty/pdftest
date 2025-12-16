@@ -1,0 +1,46 @@
+sequenceDiagram
+    autonumber
+    actor User
+    
+    box "Tab 1: Online Banking (OLB)" #f0f7ff
+        participant OLBApp as OLB App (Shell)
+        participant WebComp as Robo Web Component<br/>(Rancher)
+    end
+    
+    participant OKKK as OKKK (CIAM)
+    
+    box "Tab 2: Marstone App" #fff5e6
+        participant NewTab as Marstone Tab
+    end
+    
+    participant Auth0 as Marstone Auth0
+
+    note over User, OKKK: Prerequisite: User is logged into OLB.<br/>OKKK Session Cookie exists in Browser.
+
+    User->>OLBApp: 1. Clicks "Robo-Advisory" Banner
+    OLBApp->>WebComp: 2. Load Web Component
+    
+    note right of WebComp: User views component content.
+    User->>WebComp: 3. Clicks "Launch Marstone" Button
+    
+    note right of WebComp: Standard Window Open.<br/>Browser shares the cookie jar.
+    WebComp->>NewTab: 4. window.open(Marstone_SSO_URL)
+    
+    note right of NewTab: The OIDC "Dance" Begins
+    NewTab->>Auth0: 5. GET /authorize (OIDC Init)
+    Auth0->>OKKK: 6. GET /authorize (Federated Login)
+    
+    note right of OKKK: Crucial Check: Browser sends existing Session Cookie.
+    OKKK->>OKKK: 7. Validate Session Cookie (Silent)
+    note right of OKKK: User is already logged in.<br/>Skip Password Prompt.
+    
+    OKKK-->>Auth0: 8. Redirect w/ Auth Code
+    Auth0-->>NewTab: 9. Redirect w/ Auth Code
+    NewTab->>Auth0: 10. Exchange Code for Tokens
+    
+    NewTab->>NewTab: 11. Load Marstone Dashboard
+    NewTab-->>User: 12. User sees Marstone App (Tab 2)
+
+
+---------------------------------------------------------------------------------------------------------------
+
