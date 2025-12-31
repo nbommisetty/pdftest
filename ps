@@ -1,0 +1,33 @@
+Integration of the Direct Bank fcb-direct-deposit-sdk (ClickSwitch) into the FCB General Bank Q2 Online Banking Platform.
+
+Key Accomplishments
+Authentication Handshake (JWE): We resolved the certificate mismatch. FCB General Bank generated a test JWE using the updated signing certificate, and Direct Bank successfully decrypted/validated it. The Auth tunnel is verified.
+Tenant Configuration: We received the ClickSwitch API Key for the FCB General Bank tenant (via Kamini). This key has been successfully configured in the Web Component's API layer to authorize incoming requests from the FCB/Q2 environment.
+
+Current Focus: SDK Initialization
+The integration is currently in the frontend implementation phase:
+Manifest Consumption: FCB General Bank has successfully accessed and loaded the SDK URLs/dependencies via the manifest file.
+Active Issue: While the assets load successfully, the application is encountering an error during the initialization sequence.
+
+Root Cause: Initial triage indicates this is unrelated to the SDK core logic. It appears to be an environment configuration or routing issue within the Q2/General Bank implementation wrapper.
+Status: The FCB General Bank Dev team is currently investigating.
+🧪 QA Readiness
+
+Resource Planning: We are aligning the Direct Bank QA team to validate the Direct Deposit Web Component running within the Q2 environment.
+Access Request: A user list of QA resources requiring Q2 login access has been shared with Danny.
+
+Next Steps
+General Bank to isolate and resolve the environment configuration issue.
+General Bank/Danny to provision Q2 access for the Direct Bank QA team.
+Once the issue is resolved, verify rendering and begin functional testing.
+--------------
+
+Key Accomplishment: Authentication Handshake This week, the team focused on establishing the secure handshake between the Q2 platform and the Direct Bank SDK. We successfully resolved a mismatch regarding the SSL certificates required for the JWE (JSON Web Encryption) flow.
+
+Certificate Rotation: We facilitated an exchange of updated certificates to align with the required security architecture:
+
+Signature: FCB General Bank provided their updated certificate for signing the JWT.
+
+Encryption: Direct Bank provided our updated certificate for payload encryption.
+
+Validation Success: Using these updated assets, the FCB General Bank team generated a test JWE and shared it with the Direct Bank team. We have successfully decrypted and validated the token on our end, confirming the authentication tunnel is now operational.
