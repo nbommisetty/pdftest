@@ -1,20 +1,11 @@
-6. References & Learning Resources
-For engineers new to Flowable, please review the official documentation below:
-
-Getting Started:
-
-Flowable Open Source Home - Overview of the ecosystem.
-
-Getting Started Guide - A 10-minute tutorial on deploying a simple process.
-
-Core Documentation:
-
-BPMN 2.0 User Guide - For structured flows like Retention Offers.
-
-CMMN 1.1 User Guide - For ad-hoc "Case Management" flows used in Assisted Servicing.
-
-Development:
-
-Spring Boot Integration - How to configure the embedded engine in our microservices.
-
-REST API Swagger Docs - Reference for the out-of-the-box APIs.
+node -e '
+const url = process.argv[1];
+const adapter = url.startsWith("https") ? require("https") : require("http");
+const req = adapter.get(url, (res) => {
+  console.log(`\nSTATUS: ${res.statusCode}`);
+  console.log("HEADERS:");
+  console.log(res.headers);
+  res.resume(); 
+});
+req.on("error", (e) => console.error(`Error: ${e.message}`));
+' "YOUR_URL_HERE"
