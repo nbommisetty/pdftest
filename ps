@@ -1,12 +1,21 @@
 node -e '
 const url = process.argv[1];
 const adapter = url.startsWith("https") ? require("https") : require("http");
-const options = { rejectUnauthorized: false }; 
+const options = { rejectUnauthorized: false };
 const req = adapter.get(url, options, (res) => {
   console.log(`\nSTATUS: ${res.statusCode}`);
-  console.log("HEADERS:");
-  console.log(res.headers);
-  res.resume(); 
+  console.log("HEADERS:", res.headers);
+  
+  res.setEncoding("utf8");
+  let rawData = "";
+  res.on("data", (chunk) => { 
+    if(rawData.length < 300) rawData += chunk; 
+  });
+  res.on("end", () => {
+    console.log("\n--- BODY SNIPPET ---");
+    console.log(rawData.substring(0, 300)); 
+    console.log("...");
+  });
 });
-req.on("error", (e) => console.error(`Error: ${e.message}`));
+req.on("error", (e) => console.error(e));
 ' "YOUR_URL_HERE"
