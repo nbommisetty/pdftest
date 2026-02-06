@@ -1,0 +1,80 @@
+flowchart TD
+    %% Define Swimlanes
+    subgraph Branch_Office ["SWIMLANE 1: BRANCH OFFICE (Intake)"]
+        direction TB
+        Teller([Role: Teller / Branch Banker])
+        Mosaic_Entry["<b>Mosaic App</b><br/>Enter Referral Details"]
+        Mosaic_DB[("<b>Mosaic Referral DB</b><br/>Local Store")]
+        Dashboard["<b>Mosaic Dashboard</b><br/>View 'Funded' Status"]
+    end
+
+    subgraph Integration_Layer ["SWIMLANE 2: REFERRAL HUB (Traffic Cop)"]
+        direction TB
+        Hub_DB[("<b>Wealth Referral Hub</b><br/>Creates Global ID")]
+        Hub_Notify["<b>Notification Service</b><br/>Alerts Branch"]
+    end
+
+    subgraph PCS_Office ["SWIMLANE 3: SALESFORCE (Relationship Management)"]
+        direction TB
+        PCS([Role: PCS Banker])
+        SF_Entry["<b>Create Manual Referral</b><br/>(Networking/Event Lead)"]
+        SF_Gate{"<b>Logic Gate</b><br/>Existing Customer?"}
+        SF_Lead["Create <b>LEAD</b>"]
+        SF_Opp["Create <b>OPPORTUNITY</b><br/>(Linked to Account)"]
+        Convert["<b>Conversion</b><br/>Lead becomes Opportunity"]
+        Launch_Button["Click <b>'Launch Onboarding'</b>"]
+        SF_Update["<b>Auto-Update</b><br/>Stage: Closed-Won<br/>Add Account #"]
+    end
+
+    subgraph Fulfillment ["SWIMLANE 4: FULFILLMENT (Execution)"]
+        direction TB
+        Mosaic_KYC["<b>Mosaic App (Bridge)</b><br/>Perform KYC & Identity Checks"]
+        Velocity["<b>Velocity (AO)</b><br/>Account Origination"]
+        Core[("<b>Bank Core</b><br/>Mainframe")]
+    end
+
+    %% === FLOW A: BRANCH ORIGINATED (The Standard Path) ===
+    Teller --> Mosaic_Entry
+    Mosaic_Entry -->|1. Save Locally| Mosaic_DB
+    Mosaic_DB -->|2. API Push| Hub_DB
+
+    Hub_DB -->|3. Forward Sync| SF_Gate
+    SF_Gate -- No - New Person --> SF_Lead
+    SF_Gate -- Yes - Has Core ID --> SF_Opp
+    
+    %% === FLOW B: BANKER ORIGINATED (The Reverse Path) ===
+    PCS -->|Met Client at Event| SF_Entry
+    SF_Entry -.->|4. REVERSE SYNC| Hub_DB
+
+    %% === FLOW C: THE WORK ===
+    SF_Lead --> PCS
+    PCS -->|Work & Qualify| Convert
+    Convert --> SF_Opp
+    SF_Opp --> PCS
+    
+    %% === FLOW D: FULFILLMENT ===
+    PCS --> Launch_Button
+    Launch_Button -.->|SSO + Context| Mosaic_KYC
+    Mosaic_KYC -->|Pass Clean Data| Velocity
+    Velocity -->|Submit| Core
+    Core -- Success - Acct # --> Velocity
+
+    %% === FLOW E: FEEDBACK LOOP ===
+    Velocity -->|Return Acct #| SF_Update
+    SF_Update -->|5. Status Sync| Hub_DB
+    Hub_DB -->|Push Alert| Hub_Notify
+    Hub_Notify -->|Update Record| Mosaic_DB
+    Mosaic_DB -->|Read Status| Dashboard
+    Dashboard -.-> Teller
+
+    %% Styling
+    classDef role fill:#fff,stroke:#333,stroke-width:1px,stroke-dasharray: 5 5;
+    classDef app fill:#e3f2fd,stroke:#2196f3,stroke-width:2px;
+    classDef db fill:#e8f5e9,stroke:#4caf50,stroke-width:2px;
+    classDef logic fill:#fff9c4,stroke:#fbc02d,stroke-width:2px;
+    classDef reverse fill:#ffebee,stroke:#c62828,stroke-width:2px,stroke-dasharray: 5 5;
+
+    class Teller,PCS role;
+    class Mosaic_Entry,Dashboard,Mosaic_KYC,Velocity,SF_Lead,SF_Opp,Launch_Button,SF_Update,SF_Entry app;
+    class Mosaic_DB,Hub_DB,Core db;
+    class SF_Gate,Convert logic;
