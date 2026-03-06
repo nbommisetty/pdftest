@@ -1,0 +1,29 @@
+We are currently evaluating workflow engines to orchestrate multi-step servicing flows and retention offers. Our architectural preference is to embed an open-source engine directly within our Spring Boot microservices. We are heavily weighing Flowable against Camunda, and while we strongly prefer Flowable’s embedded model over Camunda 8's shift to an external broker (Zeebe), our primary hurdle is enterprise vulnerability management.
+
+As a financial institution, we cannot run open-source libraries in production without guaranteed SLA-backed support for CVEs. We are not currently looking for a full enterprise UI suite (e.g., Flowable Work/Engage), but rather strict, long-term support for the core engines (BPMN/CMMN).
+
+Here are the primary topics we need to discuss:
+
+1. Commercial Support Model for Embedded Engines
+
+Do you offer a commercial tier focused strictly on library support and security patching for the embedded Spring Boot engines?
+
+How is this licensed (e.g., per JVM, per core, flat fee) for a headless deployment?
+
+2. Vulnerability Management & SLAs
+
+What are your guaranteed response times (SLAs) for Critical and High CVEs?
+
+Do paying customers receive private patches before public GitHub releases?
+
+What is your Long-Term Support (LTS) and backporting policy to avoid forced major version upgrades when a CVE is discovered?
+
+3. Software Supply Chain Security
+
+Do you provide a comprehensive SBOM with supported releases?
+
+Will we have access to a private, verified Maven registry for artifact delivery?
+
+4. Architecture Comparison
+
+Given our evaluation of Camunda 7/8, what is Flowable's long-term roadmap and commitment to supporting the embedded Spring Boot architecture?
