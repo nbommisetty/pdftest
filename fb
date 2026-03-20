@@ -1,50 +1,31 @@
-sequenceDiagram
-    autonumber
-    actor User
-    
-    box "Mobile Device Context" #f9f9f9
-        participant NativeApp as Native Mobile App<br/>(Dashboard & Shell)
-        participant WebComp as Robo Web Component<br/>(Hosted in Rancher SCP)
-        participant MarstoneWebView as Marstone WebView<br/>(New Container)
-    end
-    
-    participant MobileBackend as Mobile App Backend
-    participant PseudoIdP as Bank Pseudo-IdP<br/>(Internal Only)
-    participant OKKK as OKKK (CIAM)
-    participant Auth0 as Marstone Auth0
+2. Decision Drivers
+Strict Data Isolation: The absolute necessity to guarantee tenant context (e.g., Direct Bank vs. General Bank) is resolved accurately and securely before any interaction with downstream SQL Server databases.
 
-    note over User, NativeApp: User is logged in and viewing Mobile Dashboard
+Developer Velocity: We need to eliminate boilerplate "pass-through" code for simple operations while providing a dedicated space for complex UI orchestration.
 
-    User->>NativeApp: 1. Clicks "Robo-Advisory" Banner
-    
-    note right of NativeApp: App navigates to Robo feature.
-    NativeApp->>WebComp: 2. Load "Robo Web Component"
-    
-    User->>WebComp: 3. Verify Customer Info (Review Screen)
-    User->>WebComp: 4. Clicks "Launch Marstone" Button
-    
-    note left of WebComp: Component signals intent via JS Bridge.
-    WebComp-->>NativeApp: 5. Send Message: {action: "launch_marstone"}
-    
-    note right of NativeApp: Native Shell receives signal.<br/>Initiates secure backend flow.
-    NativeApp->>MobileBackend: 6. Request Launch (w/ OKKK Access Token)
-    
-    note right of MobileBackend: Security Boundary:<br/>Validates Mobile App request.
-    MobileBackend->>PseudoIdP: 7. Forward Request (Whitelisted Internal IP)
-    
-    PseudoIdP->>OKKK: 8. API Call: /introspect (Validate Token)
-    OKKK-->>PseudoIdP: 9. Token Valid (User Verified)
-    
-    note right of PseudoIdP: 10. Generate & Sign SAML Response.
-    PseudoIdP-->>MobileBackend: Return HTML "Auto-Submit" Form
-    MobileBackend-->>NativeApp: Return HTML Form
-    
-    note right of NativeApp: 11. Initialize NEW WebView.<br/>Robo Component remains active.
-    NativeApp->>MarstoneWebView: 12. Load HTML Form into Marstone WebView
-    
-    MarstoneWebView->>Auth0: 13. POST /login/callback (SAMLResponse)
-    note left of Auth0: 14. Auth0 Validates Signature & Creates Session.
-    Auth0-->>MarstoneWebView: 15. Redirect to Marstone URL
-    
-    MarstoneWebView->>MarstoneWebView: 16. Load Marstone App (Auto-Login via OIDC)
-    MarstoneWebView-->>User: 17. User sees Marstone Dashboard
+Security Centralization: A requirement to validate JWTs and authorize requests at the edge of the network rather than inside every individual microservice.
+
+Complex Workflow Orchestration: The introduction of the Flowable workflow engine requires a layer capable of coordinating multi-domain state changes without leaking that complexity to the frontend.
+
+3. Considered Options
+Option 1: Strict BFF (Backend-for-Frontend Only)
+
+Description: Every single UI request must route through a BFF layer, with no exceptions.
+
+Outcome: Rejected. While this provides ultimate decoupling, it requires UI and Backend teams to write and maintain boilerplate orchestration code even for simple 1:1 CRUD operations, severely reducing time-to-market.
+
+Option 2: Direct-to-Domain (No Orchestration Layer)
+
+Description: UI applications call core domain services directly for all operations.
+
+Outcome: Rejected. This forces the UI to manage complex orchestration (especially around Flowable processes), leads to massive over-fetching of data, and tightly couples the frontend to backend data models.
+
+Option 3: Smart API Gateway (Logic at the Edge)
+
+Description: Push payload shaping, data aggregation, and orchestration logic directly into the Ingress Controller / API Gateway using scripting or plugins.
+
+Outcome: Rejected. This makes the Gateway a monolithic bottleneck, utilizes proprietary scripting languages, and degrades the developer experience compared to building maintainable orchestration in Spring Boot.
+
+Option 4: Layered API Strategy with Edge Routing (Chosen)
+
+Description: Use the Edge/Ingress for security and routing, a BFF for complex UI orchestration, and allow direct-to-domain calls strictly for simple CRUD operations.
