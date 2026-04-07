@@ -1,31 +1,31 @@
-2. Decision Drivers
-Strict Data Isolation: The absolute necessity to guarantee tenant context (e.g., Direct Bank vs. General Bank) is resolved accurately and securely before any interaction with downstream SQL Server databases.
+sequenceDiagram
+    autonumber
+    actor Dev as Velocity Developer
+    participant Git as Central GitOps Repo
+    participant CI as CI/CD Pipeline
+    actor Approver as Data Team / Approver
+    participant Store as Artifact Store (ConfigMap/S3)
+    participant Engine as Translation Engine (TaaS)
 
-Developer Velocity: We need to eliminate boilerplate "pass-through" code for simple operations while providing a dedicated space for complex UI orchestration.
-
-Security Centralization: A requirement to validate JWTs and authorize requests at the edge of the network rather than inside every individual microservice.
-
-Complex Workflow Orchestration: The introduction of the Flowable workflow engine requires a layer capable of coordinating multi-domain state changes without leaking that complexity to the frontend.
-
-3. Considered Options
-Option 1: Strict BFF (Backend-for-Frontend Only)
-
-Description: Every single UI request must route through a BFF layer, with no exceptions.
-
-Outcome: Rejected. While this provides ultimate decoupling, it requires UI and Backend teams to write and maintain boilerplate orchestration code even for simple 1:1 CRUD operations, severely reducing time-to-market.
-
-Option 2: Direct-to-Domain (No Orchestration Layer)
-
-Description: UI applications call core domain services directly for all operations.
-
-Outcome: Rejected. This forces the UI to manage complex orchestration (especially around Flowable processes), leads to massive over-fetching of data, and tightly couples the frontend to backend data models.
-
-Option 3: Smart API Gateway (Logic at the Edge)
-
-Description: Push payload shaping, data aggregation, and orchestration logic directly into the Ingress Controller / API Gateway using scripting or plugins.
-
-Outcome: Rejected. This makes the Gateway a monolithic bottleneck, utilizes proprietary scripting languages, and degrades the developer experience compared to building maintainable orchestration in Spring Boot.
-
-Option 4: Layered API Strategy with Edge Routing (Chosen)
-
-Description: Use the Edge/Ingress for security and routing, a BFF for complex UI orchestration, and allow direct-to-domain calls strictly for simple CRUD operations.
+    Dev->>Git: Update velocity_funding.jsonata & Open PR
+    Git->>CI: Trigger validation pipeline
+    
+    rect rgb(240, 248, 255)
+        Note over CI: Automated Governance Gate
+        CI->>Git: Fetch Data Team's Canonical JSON Schema
+        CI->>CI: Execute updated JSONata against Mock Native Events
+        CI->>CI: Validate output against Canonical Schema
+    end
+    
+    alt Validation Fails
+        CI-->>Git: Mark build as FAILED (Block PR)
+        Git-->>Dev: Notify validation error
+    else Validation Succeeds
+        CI-->>Git: Mark build as SUCCESS
+        Approver->>Git: Review & Merge PR to main
+        Git->>CI: Trigger deployment pipeline
+        CI->>Store: Publish validated .jsonata files
+        Store-->>Engine: Config update event (or Engine polling)
+        Engine->>Store: Fetch new .jsonata configuration
+        Engine->>Engine: Dynamically update mapping cache (No Restart)
+    end
