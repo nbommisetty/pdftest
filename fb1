@@ -1,0 +1,57 @@
+flowchart LR
+    %% Data Flow Diagram for Option 3: Translation-as-a-Service (TaaS)
+    
+    subgraph Velocity Domain [🟩 Velocity Bounded Context]
+        direction TB
+        V_App[Velocity Origination App]
+        V_Topic[(Velocity Native Topic)]
+        V_Repo[Velocity Git Repo <br/> mapping.jsonata]
+        
+        V_App -->|1. Publishes Native Event| V_Topic
+    end
+
+    subgraph Mosaic Domain [🟦 Mosaic Bounded Context]
+        direction TB
+        M_App[Mosaic Servicing App]
+        M_Topic[(Mosaic Native Topic)]
+        M_Repo[Mosaic Git Repo <br/> mapping.jsonata]
+        
+        M_App -->|1. Publishes Native Event| M_Topic
+    end
+
+    subgraph TaaS Platform [⚙️ Stand-Alone TaaS Platform]
+        direction TB
+        GitOps[CI/CD GitOps Pipeline <br/> Validation & Deployment]
+        Engine[[Centralized Translation Engine <br/> Stateless]]
+        
+        V_Repo -.->|2. Commits Rules| GitOps
+        M_Repo -.->|2. Commits Rules| GitOps
+        GitOps -.->|3. Loads Validated Config| Engine
+        
+        V_Topic -->|4. Consumes Native Event| Engine
+        M_Topic -->|4. Consumes Native Event| Engine
+    end
+
+    subgraph Data Domain [🟧 Enterprise Data Domain]
+        direction TB
+        HubProxy[InteractionHub <br/> Kafka REST Proxy]
+        EntTopic[(Enterprise Canonical Topic)]
+        ODS[(Enterprise ODS)]
+        
+        HubProxy -->|6. Produces Record to| EntTopic
+        EntTopic -->|7. Ingests via Sink Connector| ODS
+    end
+
+    %% Cross-Domain Translation Flows
+    Engine -->|5. HTTP POST Canonical JSON| HubProxy
+
+    %% Styling 
+    classDef velocity fill:#e6ffe6,stroke:#009933,stroke-width:2px,color:#000;
+    classDef mosaic fill:#e6f2ff,stroke:#0066cc,stroke-width:2px,color:#000;
+    classDef taas fill:#f2e6ff,stroke:#6600cc,stroke-width:2px,color:#000;
+    classDef data fill:#fff2e6,stroke:#cc6600,stroke-width:2px,color:#000;
+    
+    class V_App,V_Topic,V_Repo velocity;
+    class M_App,M_Topic,M_Repo mosaic;
+    class GitOps,Engine taas;
+    class HubProxy,EntTopic,ODS data;
