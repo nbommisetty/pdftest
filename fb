@@ -1,31 +1,45 @@
-sequenceDiagram
-    autonumber
-    actor Dev as Velocity Developer
-    participant Git as Central GitOps Repo
-    participant CI as CI/CD Pipeline
-    actor Approver as Data Team / Approver
-    participant Store as Artifact Store (ConfigMap/S3)
-    participant Engine as Translation Engine (TaaS)
+flowchart LR
+    %% Data Flow Diagram for Option 2: Federated ACL with REST Proxy
+    
+    subgraph Velocity Domain [🟩 Velocity Bounded Context]
+        direction TB
+        V_App[Velocity Origination App <br/> .NET / Angular]
+        V_Topic[(Velocity Native <br/> Kafka Topic)]
+        V_ACL[[Velocity Translator ACL <br/> .NET Microservice]]
+        
+        V_App -->|1. Publishes Fat Event| V_Topic
+        V_Topic -->|2. Consumes Native Event| V_ACL
+    end
 
-    Dev->>Git: Update velocity_funding.jsonata & Open PR
-    Git->>CI: Trigger validation pipeline
-    
-    rect rgb(240, 248, 255)
-        Note over CI: Automated Governance Gate
-        CI->>Git: Fetch Data Team's Canonical JSON Schema
-        CI->>CI: Execute updated JSONata against Mock Native Events
-        CI->>CI: Validate output against Canonical Schema
+    subgraph Mosaic Domain [🟦 Mosaic Bounded Context]
+        direction TB
+        M_App[Mosaic Servicing App <br/> Spring Boot / Flowable]
+        M_Topic[(Mosaic Native <br/> Kafka Topic)]
+        M_ACL[[Mosaic Translator ACL <br/> Spring Boot Microservice]]
+        
+        M_App -->|1. Publishes Fat Event| M_Topic
+        M_Topic -->|2. Consumes Native Event| M_ACL
     end
-    
-    alt Validation Fails
-        CI-->>Git: Mark build as FAILED (Block PR)
-        Git-->>Dev: Notify validation error
-    else Validation Succeeds
-        CI-->>Git: Mark build as SUCCESS
-        Approver->>Git: Review & Merge PR to main
-        Git->>CI: Trigger deployment pipeline
-        CI->>Store: Publish validated .jsonata files
-        Store-->>Engine: Config update event (or Engine polling)
-        Engine->>Store: Fetch new .jsonata configuration
-        Engine->>Engine: Dynamically update mapping cache (No Restart)
+
+    subgraph Data Domain [🟧 Enterprise Data Domain]
+        direction TB
+        HubProxy[InteractionHub <br/> Kafka REST Proxy]
+        EntTopic[(Enterprise Canonical <br/> Kafka Topic)]
+        ODS[(Enterprise ODS)]
+        
+        HubProxy -->|4. Produces Record to| EntTopic
+        EntTopic -->|5. Ingests via Sink Connector| ODS
     end
+
+    %% Cross-Domain Translation Flows - Removed parentheses and breaks for safe parsing
+    V_ACL -->|3. HTTP POST Canonical JSON| HubProxy
+    M_ACL -->|3. HTTP POST Canonical JSON| HubProxy
+
+    %% Styling to match the ownership matrix
+    classDef velocity fill:#e6ffe6,stroke:#009933,stroke-width:2px,color:#000;
+    classDef mosaic fill:#e6f2ff,stroke:#0066cc,stroke-width:2px,color:#000;
+    classDef data fill:#fff2e6,stroke:#cc6600,stroke-width:2px,color:#000;
+    
+    class V_App,V_Topic,V_ACL velocity;
+    class M_App,M_Topic,M_ACL mosaic;
+    class HubProxy,EntTopic,ODS data;
