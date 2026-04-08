@@ -1,0 +1,11 @@
+The evaluation of integration patterns is guided by the following key architectural and business drivers:
+
+Domain Autonomy & Release Independence: The Velocity and Mosaic capability teams must be able to deploy features, refactor code, and release updates at their own cadence. Integration with the Interaction Hub cannot force synchronized, cross-domain release trains.
+
+High Availability of Core Banking Operations: Account origination and servicing are Tier-1 critical paths. Reporting and data ingestion to the Interaction Hub are secondary. The architecture must guarantee that any latency, outage, or maintenance in the Interaction Hub does not degrade the performance or availability of core banking applications.
+
+Data Encapsulation (Hiding Internal State): Internal capability database schemas are fluid and subject to optimization. The enterprise integration pattern must rely on explicit, versioned contracts (Domain Events) rather than implicit state scraping (e.g., direct CDC to the ODS) to allow capability teams to refactor their databases without breaking downstream consumers.
+
+Clear Boundaries of Ownership: We must avoid the "data janitor" anti-pattern where downstream data engineers are forced to reverse-engineer business logic. The capability teams (who understand the business context of the data) must own the shape of the data they emit, while the Interaction Hub owns the enforcement of the Canonical Schema.
+
+Polyglot Ecosystem Compatibility: Velocity operates on .NET/Angular, while Mosaic operates on Spring Boot/React. The chosen pattern must be universally adoptable regardless of the underlying technology stack of the capability domain.
