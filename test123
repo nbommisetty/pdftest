@@ -1,0 +1,49 @@
+Here is the updated proposal with the session identifiers included. Capturing both IDs is an excellent call, as it allows your teams to stitch together the complete lifecycle of the session across Okta, D1, and ThreatMetrix.
+
+***
+
+**Alternative Integration Proposal: Asynchronous Webhook for D1 Auth Telemetry**
+
+To cost-effectively ingest critical authentication telemetry from the FIS D1 platform, CIT proposes leveraging an asynchronous, "fire-and-forget" HTTP Webhook rather than licensing the premium Kafka event streaming module. Because D1 already successfully executes outbound HTTP payloads to CIT APIs for EWS account validation, this approach utilizes an established egress pattern and firewall configuration without requiring new infrastructure or custom pub/sub engineering on the FIS side. By configuring D1 to simply emit a standard JSON payload upon authentication and session events, CIT can achieve our fraud analysis objectives efficiently while absorbing all queuing, scaling, and guaranteed-delivery responsibilities internally via our own API gateway and Kafka clusters.
+
+To make this telemetry actionable for our internal fraud models, the Webhook payload must provide the missing context that our Okta and ThreatMetrix instances cannot correlate natively. Specifically, we require the JSON event to dynamically differentiate by access channel and include the following critical data elements:
+* **Authentication Event Status** (Explicit flags for Login Success, Login Failure, and Logout)
+* **Session Identifiers** (Both D1 Session ID and Okta Session ID for cross-platform correlation)
+* **Client IP Address** (for all traffic)
+* **Access Channel Indicator** (Web vs. Mobile)
+* **Exact User-Agent String** (for Web sessions)
+* **Application Version and OS Details** (for Mobile sessions)
+* **Local Biometric Success Status** (e.g., FaceID/TouchID validations happening locally on the device)
+
+If FIS can acknowledge the viability of this standard HTTP POST approach over the existing egress path, we request a revised quote strictly for configuring this outbound Webhook, independent of any premium streaming product licenses.
+
+
+
+Yes, absolutely. Because D1 is using OpenID Connect (OIDC) to integrate with Okta, they already receive the Okta session identifier automatically during every successful login. They do not need to make any extra API calls or build custom logic to retrieve it.
+
+Here is exactly how it works:
+
+The id_token and the sid Claim
+At the end of a successful OIDC login flow, Okta (the Identity Provider) returns a JSON Web Token (JWT) called the id_token to D1 (the Relying Party).
+
+Inside the payload of that id_token, Okta includes several standard claims about the user and the authentication event. One of those standard reserved claims is the sid (Session ID).
+
+Here is a simplified example of what the decoded id_token payload looks like inside D1's memory the moment the user successfully logs in:
+
+JSON
+{
+  "iss": "https://cit.okta.com",
+  "aud": "d1-client-id-123",
+  "sub": "cit-okta-uid-88372",
+  "auth_time": 1713139200,
+  "sid": "00a1b2c3d4-e5f6-7890", 
+  "jti": "id-token-unique-identifier"
+}
+sid (Session ID): This is the exact Okta session identifier. In the OIDC specification, it is explicitly designed for session tracking and backend logout coordination.
+
+sub (Subject): This is the user's unique Okta ID, which D1 also extracts.
+
+Negotiation Leverage
+This gives you even more ammunition for your vendor discussion. When D1 completes the Okta handshake, that id_token is already sitting in D1's memory.
+
+To include the Okta Session ID in your proposed Webhook payload, the D1 engineering team simply needs to extract the existing sid string from the JWT they have already validated. There is no complex cross-platform integration or API fetching required; it is a basic variable extraction from an object they possess locally.
