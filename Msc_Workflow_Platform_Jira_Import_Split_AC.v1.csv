@@ -1,0 +1,61 @@
+Issue Type,Summary,Description,Acceptance Criteria,Epic Name,Epic Link,Parent Issue Key
+Epic,Msc Workflow Platform: Core Infrastructure,"Establish the base workflow platform within our Spring Boot microservices, ensuring it is tuned for high availability, properly containerized for OpenShift, and backed by a managed schema.",,Msc Workflow Infra,,[REPLACE-WITH-FEATURE-KEY]
+Story,Flowable Engine Bootstrapping & Configuration,"Integrate the flowable-spring-boot-starter dependencies. Configure the base Flowable engine properties to ensure the headless engine is optimized for high-throughput, asynchronous operations.","1. The Spring Boot application boots successfully with Flowable dependencies.
+2. Default Flowable UI applications (IDM, Modeler, Admin) are completely disabled and inaccessible.
+3. The Flowable RuntimeService, TaskService, and RepositoryService beans are available in the Spring Application Context.",,Msc Workflow Infra,
+Story,Flowable Database Schema & Migration Strategy,Disable Flowable's auto-schema generation (database-schema-update=false). Extract the Flowable DDL scripts and integrate them into our centralized database migration pipeline.,"1. database-schema-update is explicitly set to false in production application properties.
+2. The database migration tool (e.g., Liquibase/Flyway) successfully executes the Flowable DDL scripts on startup.
+3. The standard Flowable tables (ACT_*) are verified to exist in the target relational database.",,Msc Workflow Infra,
+Story,OpenShift Containerization & Probe Tuning,Define the deployment manifests for the workflow platform. Configure Kubernetes readiness and liveness probes specific to the Flowable engine's health.,"1. A Spring Boot Actuator health indicator is configured to check database connectivity and the Flowable engine status.
+2. OpenShift liveness and readiness probes successfully target the Actuator health endpoint.
+3. The pod scales up and down gracefully without corrupting in-flight transactions.",,Msc Workflow Infra,
+Story,Async Job Executor Clustering,Configure the Flowable Async Executor for a clustered environment so that multiple pods can safely pick up background timer jobs or async continuations.,"1. async-executor-activate is set to true.
+2. Multiple active pods can process timer events concurrently.
+3. Metrics confirm no duplicate job executions or excessive FlowableOptimisticLockingException errors during load testing.",,Msc Workflow Infra,
+Epic,Msc Workflow Platform: CI/CD & Deployment,"Create the automated pathways for how BPMN XML files are validated, versioned, and deployed to the platform without manual intervention.",,Msc Workflow CI/CD,,[REPLACE-WITH-FEATURE-KEY]
+Story,BPMN Artifact Validation in CI,Introduce a CI pipeline step that parses and validates .bpmn20.xml files against the BPMN 2.0 schema and internal naming conventions.,"1. The CI pipeline fails the build if a .bpmn20.xml file contains malformed XML or invalid BPMN 2.0 syntax.
+2. The pipeline enforces that all process definitions contain a valid ID and Name attribute.",,Msc Workflow CI/CD,
+Story,Automated Process Deployment Pipeline,Implement the deployment strategy utilizing Flowable's Spring auto-deployment capabilities so that new BPMN versions are registered in the engine during standard deployments.,"1. Valid .bpmn20.xml files placed in src/main/resources/processes/ are automatically detected on application startup.
+2. If the XML has changed since the last deployment, a new version number is generated in the Flowable ACT_RE_PROCDEF table.",,Msc Workflow CI/CD,
+Story,In-Flight Process Versioning Strategy,Document and implement the platform strategy for handling active instances when a new BPMN version is deployed.,"1. By default, active process instances continue to execute against the BPMN version they were instantiated on.
+2. The strategy for handling major version breaking changes (e.g., using Flowable process migration API) is documented in the engineering Wiki.",,Msc Workflow CI/CD,
+Epic,Msc Workflow Platform: API Facade,"Do not expose native workflow REST APIs directly to the Msc UI or other domains. Build a standardized, abstracted API layer.",,Msc Workflow API,,[REPLACE-WITH-FEATURE-KEY]
+Story,Process Instantiation API,"Build a generic POST /workflows/v1/instances endpoint that accepts a process definition key and business variables, and instantiates the flow using Flowable RuntimeService.","1. Endpoint accepts a JSON payload containing processDefinitionKey and a key-value map of variables.
+2. Returns a 201 Created HTTP status with a standardized response object containing the new processInstanceId.",,Msc Workflow API,
+Story,Task Inbox & Query API,"Build a paginated GET /workflows/v1/tasks endpoint optimized for the associate UI, utilizing Flowable TaskService.","1. Supports query parameters for assignee, candidateGroup, and pagination (page, size).
+2. Returns a JSON array of task objects, including task ID, name, creation date, and relevant process variables.",,Msc Workflow API,
+Story,Task Execution & State Transition API,Build a POST /workflows/v1/tasks/{taskId}/complete endpoint allowing the frontend to submit form data and complete the task via Flowable.,"1. Endpoint accepts a JSON payload of variables to be saved upon task completion.
+2. Engine successfully moves the BPMN token to the next node.
+3. Returns a 204 No Content HTTP status on success.",,Msc Workflow API,
+Story,Standardized Exception Handling,Implement ControllerAdvice to map specific Flowable engine exceptions into standard HTTP 4xx/5xx responses.,"1. FlowableObjectNotFoundException maps to an HTTP 404 Not Found.
+2. FlowableOptimisticLockingException maps to an HTTP 409 Conflict.
+3. Internal server errors return a standard 500 response with sanitized error messages.",,Msc Workflow API,
+Epic,Msc Workflow Platform: Security & Identity,Secure the workflow platform by mapping our enterprise authentication and authorization structures into the engine's identity management.,,Msc Workflow Security,,[REPLACE-WITH-FEATURE-KEY]
+Story,OIDC/OAuth2 Token Context Propagation,"Intercept incoming API requests, extract the user identity from the OIDC token, and set it in the Flowable security context.","1. The security filter correctly extracts the associate's User ID from the JWT bearer token.
+2. Authentication is set within the Flowable engine context per request.
+3. Process instantiations and task completions correctly log the associate's ID in the ACT_HI_* audit tables.",,Msc Workflow Security,
+Story,Role-to-Group Mapping (RBAC),Implement a custom wrapper that maps our enterprise Identity Provider (IdP) groups to Flowable 'Candidate Groups.',"1. The API extracts group claims from the JWT token.
+2. Users can only query or complete tasks where they are explicitly the assignee or belong to the candidateGroup.
+3. Unauthorized access attempts return an HTTP 403 Forbidden.",,Msc Workflow Security,
+Story,Variable Payload Security,"Establish a pattern for securing sensitive customer data, strictly enforcing a 'store-by-reference' model within Flowable.","1. Platform documentation strictly prohibits storing PII or PCI data directly as Flowable process variables.
+2. Process variables are strictly limited to reference IDs and non-sensitive routing data.
+3. Automated tests or PR review checklists enforce this standard.",,Msc Workflow Security,
+Epic,Msc Workflow Platform: Observability,"Ensure the platform emits the necessary telemetry, metrics, and business events for monitoring and downstream data consumption.",,Msc Workflow O11y,,[REPLACE-WITH-FEATURE-KEY]
+Story,History Level Tuning & Archival,Configure the Flowable History Level to capture required compliance data without bloating the database. Establish a data retention policy and archival job.,"1. The engine history level is configured to AUDIT.
+2. A scheduled batch job successfully identifies process instances completed older than the retention threshold.
+3. The job successfully moves these records to cold storage or deletes them without locking the active runtime tables.",,Msc Workflow O11y,
+Story,State-Change Event Publishing (Kafka),Implement native Flowable TaskListeners and ExecutionListeners to publish domain events to our Kafka clusters whenever a critical workflow state changes.,"1. Global listeners are registered within the engine configuration.
+2. Standardized JSON event payloads are published to the designated Kafka topic upon process start, task creation, task completion, and process end.
+3. Events include critical tracing metadata.",,Msc Workflow O11y,
+Story,Micrometer/Prometheus Metrics Integration,Expose internal Flowable engine metrics via Spring Boot Actuator/Prometheus endpoints so they can be scraped and visualized in Grafana.,"1. flowable-spring-boot-starter-actuator is included and configured.
+2. The /actuator/prometheus endpoint successfully exposes Flowable-specific metrics.
+3. A base Grafana dashboard is scaffolded to visualize active workflows.",,Msc Workflow O11y,
+Epic,Msc Workflow Platform: Operations Tooling,"Build the administrative capabilities required for support teams to manage, troubleshoot, and intervene in stuck workflows.",,Msc Workflow Ops,,[REPLACE-WITH-FEATURE-KEY]
+Story,Process Intervention APIs,"Build secured, admin-only endpoints to Suspend, Activate, or Terminate runaway or stuck Flowable process instances.","1. POST /admin/workflows/v1/instances/{id}/suspend successfully pauses execution.
+2. POST /admin/workflows/v1/instances/{id}/terminate safely kills the instance.
+3. APIs enforce strict RBAC.",,Msc Workflow Ops,
+Story,Dead Letter Job Management,Build an API to query the Flowable Dead Letter table and an endpoint to force-retry those jobs once the underlying issue is resolved.,"1. GET /admin/workflows/v1/jobs/deadletter returns a list of failed jobs with exception stack traces.
+2. POST /admin/workflows/v1/jobs/deadletter/{jobId}/retry successfully moves the job back to the executable queue.",,Msc Workflow Ops,
+Story,Admin UI Scaffolding,"Within the Nx monorepo, scaffold an internal 'Workflow Operations' React application that consumes the administrative APIs.","1. A new internal React application is generated in the monorepo.
+2. The UI successfully authenticates admin users via OIDC.
+3. The UI presents a dashboard fetching and displaying active processes and dead letter jobs.",,Msc Workflow Ops,
