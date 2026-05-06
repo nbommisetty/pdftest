@@ -1,12 +1,78 @@
-## Generation Parameters Guide
+sequenceDiagram
+    autonumber
+    actor Browser as Browser (PCS Banker)
+    participant SF as Salesforce
+    participant Mosaic as Mosaic App
+    participant Okta as Okta (IdP)
 
+    Browser->>SF: Click "Launch Onboarding"
+    SF-->>Browser: Trigger Redirect Link
+    Note over Browser, Mosaic: HTTP GET /onboard?opportunityId=123
+    
+    Mosaic->>Mosaic: Detect no session.<br/>Encode 'opportunityId=123' into 'state'
+    Mosaic-->>Browser: HTTP 302 Redirect
+    Note over Browser, Okta: HTTP GET /authorize?state=[encoded_opportunityId]
+    
+    Browser->>Okta: Authenticate User
+    Okta-->>Browser: HTTP 302 Redirect (Return unaltered state)
+    Note over Browser, Mosaic: HTTP GET /callback?state=[encoded_opportunityId]
+    
+    Mosaic->>Mosaic: Decode 'state' param.<br/>Extract opportunityId=123.<br/>Establish secure session.
+    Mosaic-->>Browser: Render UI with Opportunity Context
+---
+sequenceDiagram
+    autonumber
+    actor Browser as Browser (PCS Banker)
+    participant SF as Salesforce
+    participant Mosaic as Mosaic App
+    participant Cache as Redis (Mosaic Cache)
+    participant Okta as Okta (IdP)
 
-| Parameter | Description | Example |
-| :--- | :--- | :--- |
-| **`groupId`** | The organizational domain for this project. | com.fcb.mosaic.account |
-| **`artifactId`** | The physical name of the project folder and the compiled JAR. | account-profile |
-| **`version`** | The starting release version of this service. | 1.0.0-SNAPSHOT |
-| **`package`** | The root Java package. Defaults to `groupId` if omitted, but can be overridden. | com.fcb.mosaic.account.profile |
-| **`serviceName`** | The base prefix used to generate Class names (e.g., `[Name]Controller`). | AccountProfile |
+    Browser->>SF: Click "Launch Onboarding"
+    
+    Note over SF, Mosaic: Phase 1: Server-to-Server Stash
+    SF->>Mosaic: POST /api/handoff { opportunityId: "123" }
+    Mosaic->>Cache: Save { opportunityId: "123" } with 60s TTL
+    Cache-->>Mosaic: Return token (e.g., 'xyz')
+    Mosaic-->>SF: Response: { handoffToken: "xyz" }
+    
+    Note over SF, Browser: Phase 2: Browser Redirect
+    SF-->>Browser: Trigger Redirect
+    Note over Browser, Mosaic: HTTP GET /onboard?token=xyz
+    
+    Mosaic->>Mosaic: Encode 'token=xyz' into 'state'
+    Mosaic-->>Browser: HTTP 302 Redirect
+    Browser->>Okta: HTTP GET /authorize?state=[encoded_token]
+    Browser->>Okta: Authenticate User
+    Okta-->>Browser: HTTP 302 Redirect
+    Browser->>Mosaic: HTTP GET /callback?state=[encoded_token]
+    
+    Mosaic->>Mosaic: Decode state, extract token
+    Mosaic->>Cache: Fetch 'opportunityId' using 'xyz'
+    Mosaic->>Cache: Delete Cache Entry
+    Mosaic-->>Browser: Render UI with Opportunity Context
+---
+sequenceDiagram
+    autonumber
+    actor Browser as Browser (PCS Banker)
+    participant SF as Salesforce
+    participant Mosaic as Mosaic App
+    participant Okta as Okta (IdP)
 
-*(To generate a similar project, use `mvn archetype:generate` with the `fcb.mosaic.archetypes` coordinates and supply the variables above).*
+    Browser->>SF: Click "Launch Onboarding"
+    SF->>Browser: JavaScript triggers hidden form submit
+    
+    Note over Browser, Mosaic: HTTP POST /onboard <br/> Body: { oppId: "123" }
+    Mosaic->>Mosaic: Detect no session.<br/>Read POST payload.
+    
+    Note right of Mosaic: Set cookie<br/>during a rapid redirect.
+    Mosaic-->>Browser: HTTP 302 Redirect <br/> + Set-Cookie: context=123
+    
+    Note over Browser, Okta: HTTP GET /authorize <br/> (Original POST Body is dropped)
+    Browser->>Okta: Authenticate User
+    Okta-->>Browser: HTTP 302 Redirect
+    
+    Note over Browser, Mosaic: HTTP GET /callback
+    Mosaic->>Mosaic: Read 'context' Cookie
+    
+    Mosaic-->>Browser: Render UI with Context
