@@ -1,45 +1,55 @@
-flowchart LR
-    %% Data Flow Diagram for Option 2: Federated ACL with REST Proxy
-    
-    subgraph Velocity Domain [🟩 Velocity Bounded Context]
-        direction TB
-        V_App[Velocity Origination App <br/> .NET / Angular]
-        V_Topic[(Velocity Native <br/> Kafka Topic)]
-        V_ACL[[Velocity Translator ACL <br/> .NET Microservice]]
+import org.apache.hc.client5.http.auth.AuthScope;
+import org.apache.hc.client5.http.auth.UsernamePasswordCredentials;
+import org.apache.hc.client5.http.impl.auth.BasicCredentialsProvider;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
+import org.apache.hc.client5.http.impl.classic.HttpClients;
+import org.apache.hc.core5.http.HttpHost;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
+import org.springframework.web.client.RestTemplate;
+
+@Configuration
+public class EgressProxyConfig {
+
+    @Value("${egress.proxy.host:proxy}")
+    private String proxyHost;
+
+    @Value("${egress.proxy.port:443}")
+    private int proxyPort;
+
+    @Value("${egress.proxy.username}")
+    private String proxyUser;
+
+    @Value("${egress.proxy.password}")
+    private String proxyPassword;
+
+    @Bean(name = "egressRestTemplate")
+    public RestTemplate egressRestTemplate() {
         
-        V_App -->|1. Publishes Fat Event| V_Topic
-        V_Topic -->|2. Consumes Native Event| V_ACL
-    end
+        // 1. Configure the proxy credentials
+        BasicCredentialsProvider credentialsProvider = new BasicCredentialsProvider();
+        credentialsProvider.setCredentials(
+                new AuthScope(proxyHost, proxyPort),
+                new UsernamePasswordCredentials(proxyUser, proxyPassword.toCharArray())
+        );
 
-    subgraph Mosaic Domain [🟦 Mosaic Bounded Context]
-        direction TB
-        M_App[Mosaic Servicing App <br/> Spring Boot / Flowable]
-        M_Topic[(Mosaic Native <br/> Kafka Topic)]
-        M_ACL[[Mosaic Translator ACL <br/> Spring Boot Microservice]]
+        // 2. Define the proxy host explicitly as HTTPS (since it is port 443)
+        HttpHost proxy = new HttpHost("https", proxyHost, proxyPort);
+
+        // 3. Build the custom Apache HttpClient
+        CloseableHttpClient httpClient = HttpClients.custom()
+                .setProxy(proxy)
+                .setDefaultCredentialsProvider(credentialsProvider)
+                .build();
+
+        // 4. Inject the client into Spring's RequestFactory
+        HttpComponentsClientHttpRequestFactory factory = new HttpComponentsClientHttpRequestFactory(httpClient);
         
-        M_App -->|1. Publishes Fat Event| M_Topic
-        M_Topic -->|2. Consumes Native Event| M_ACL
-    end
+        // Optional but recommended: Set timeouts to prevent hung OpenShift threads
+        factory.setConnectTimeout(10000); 
 
-    subgraph Data Domain [🟧 Enterprise Data Domain]
-        direction TB
-        HubProxy[InteractionHub <br/> Kafka REST Proxy]
-        EntTopic[(Enterprise Canonical <br/> Kafka Topic)]
-        ODS[(Enterprise ODS)]
-        
-        HubProxy -->|4. Produces Record to| EntTopic
-        EntTopic -->|5. Ingests via Sink Connector| ODS
-    end
-
-    %% Cross-Domain Translation Flows - Removed parentheses and breaks for safe parsing
-    V_ACL -->|3. HTTP POST Canonical JSON| HubProxy
-    M_ACL -->|3. HTTP POST Canonical JSON| HubProxy
-
-    %% Styling to match the ownership matrix
-    classDef velocity fill:#e6ffe6,stroke:#009933,stroke-width:2px,color:#000;
-    classDef mosaic fill:#e6f2ff,stroke:#0066cc,stroke-width:2px,color:#000;
-    classDef data fill:#fff2e6,stroke:#cc6600,stroke-width:2px,color:#000;
-    
-    class V_App,V_Topic,V_ACL velocity;
-    class M_App,M_Topic,M_ACL mosaic;
-    class HubProxy,EntTopic,ODS data;
+        return new RestTemplate(factory);
+    }
+}
