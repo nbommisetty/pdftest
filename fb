@@ -1,8 +1,12 @@
-Subject: Excluding OB-only customers from associate search results
-Hi,
-I’m reaching out to align on how we isolate our customer search results specifically to GB General bank customers. Because our branch associates currently only service GB customers, and OB operates as an online-only bank, we need to ensure OB-only customers are completely excluded from the servicing platform's search functionality for the time being.
-Following up on the notes captured in the chat (reference: 91ee8305-4955-4a55-a91d-758b5f1c8c39), we have a few open technical questions about how to reliably filter these records since both reside in the Hogan core and ODS:
-branchIdent List: Since you mentioned that not all OB direct bank customers share the same branchIdent, could you provide the finite list of all branchIdent codes associated with OB-only customers?
-Merged CIS Profiles: For customers holding accounts with both OB and GB, their profiles are merged. In these instances, which branchIdent is retained? If the GB branchIdent reliably overrides the OB one, we can use this field for filtering. However, if the retained ID simply defaults to whichever account was opened first, branchIdent won't be a viable solution for us.
-Alternative Fields (Remarks & Acquisition Code): We can't rely on Remarks or the Acquisition code for exclusion. Merged profiles (GB + OB) may carry an acquisition code, but because they are also GB customers, they absolutely still need to surface in our associate search results.
-Let me know your thoughts on the merged profile logic and if we can get that list of OB branch identifiers to test out.
+POC Scope and Success Criteria
+The POC will implement a scaled-down version of our concrete exemplar (the Service Intake Request) in both platforms. To objectively determine the correct architectural fit for the Mosaic Interaction Hub, the evaluation will be strictly measured against the following servicing-domain requirements:
+
+Latency & Execution Speed: The total round-trip time for a state transition must meet the real-time response requirements of an active, associate-facing UI.
+
+Data Sovereignty (Store-by-Reference): The engine must successfully route the workflow using only abstract reference IDs, proving it can operate without ingesting or persisting any PII/PCI payload data.
+
+Stateless Elasticity: The solution must demonstrate the ability to deploy and scale dynamically as stateless containers within our existing OpenShift infrastructure.
+
+Infrastructure Alignment: The ease of versioning workflow models alongside core code and deploying them through our standard automated CI/CD pipelines.
+
+Following the conclusion of this time-boxed POC, the engineering team will present the benchmarked metrics to the board to finalize the architectural decision.
